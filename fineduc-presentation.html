@@ -1,0 +1,2141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Fineduc — Comprehensive Technical Architecture & Project Presentation</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+    @page {
+      size: A4;
+      margin: 18mm 18mm 18mm 18mm;
+      @bottom-right {
+        content: counter(page);
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-size: 9pt;
+        color: #94a3b8;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 10pt;
+      line-height: 1.6;
+      color: #1e293b;
+      background-color: #ffffff;
+    }
+
+    .page-break {
+      page-break-before: always;
+    }
+
+    .no-break {
+      page-break-inside: avoid;
+    }
+
+    /* Cover Page */
+    .cover-page {
+      height: 100vh;
+      min-height: 250mm;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 20mm 10mm;
+      background: linear-gradient(145deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+      color: #ffffff;
+      border-radius: 12px;
+      margin-bottom: 20mm;
+    }
+
+    .cover-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+      padding-bottom: 15px;
+    }
+
+    .brand-logo {
+      font-size: 28pt;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #38bdf8, #818cf8, #c084fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .cover-meta-badge {
+      font-size: 9pt;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      padding: 6px 14px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .cover-body {
+      margin: auto 0;
+    }
+
+    .cover-title {
+      font-size: 34pt;
+      font-weight: 800;
+      line-height: 1.15;
+      margin-bottom: 16px;
+      letter-spacing: -1px;
+    }
+
+    .cover-subtitle {
+      font-size: 14pt;
+      font-weight: 400;
+      color: #94a3b8;
+      max-width: 650px;
+      line-height: 1.5;
+      margin-bottom: 30px;
+    }
+
+    .cover-highlights {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      margin-top: 30px;
+    }
+
+    .highlight-card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 16px;
+      border-radius: 8px;
+    }
+
+    .highlight-title {
+      font-size: 9pt;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #38bdf8;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .highlight-val {
+      font-size: 11pt;
+      font-weight: 600;
+      color: #f8fafc;
+    }
+
+    .cover-footer {
+      display: flex;
+      justify-content: space-between;
+      font-size: 9pt;
+      color: #64748b;
+      border-top: 1px solid rgba(255, 255, 255, 0.15);
+      padding-top: 15px;
+    }
+
+    /* Table of Contents Page */
+    .toc-page {
+      padding: 10mm 0;
+    }
+
+    .toc-header {
+      font-size: 22pt;
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 25px;
+      border-bottom: 3px solid #3b82f6;
+      padding-bottom: 10px;
+    }
+
+    .toc-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-top: 20px;
+    }
+
+    .toc-card {
+      display: flex;
+      align-items: center;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      padding: 16px 20px;
+      border-radius: 8px;
+    }
+
+    .toc-num {
+      font-size: 18pt;
+      font-weight: 800;
+      color: #3b82f6;
+      margin-right: 20px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .toc-text {
+      font-size: 12pt;
+      font-weight: 600;
+      color: #1e293b;
+    }
+
+    /* Content Sections */
+    .doc-section {
+      padding-top: 10mm;
+    }
+
+    .section-badge {
+      display: inline-block;
+      font-size: 8pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      background: #eff6ff;
+      color: #2563eb;
+      padding: 4px 10px;
+      border-radius: 4px;
+      margin-bottom: 8px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .section-title {
+      font-size: 20pt;
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 8px;
+    }
+
+    .content-body h1 {
+      font-size: 16pt;
+      font-weight: 800;
+      color: #0f172a;
+      margin-top: 24px;
+      margin-bottom: 12px;
+      page-break-after: avoid;
+    }
+
+    .content-body h2 {
+      font-size: 13pt;
+      font-weight: 700;
+      color: #1e293b;
+      margin-top: 20px;
+      margin-bottom: 10px;
+      border-bottom: 1px solid #f1f5f9;
+      padding-bottom: 4px;
+      page-break-after: avoid;
+    }
+
+    .content-body h3 {
+      font-size: 11pt;
+      font-weight: 600;
+      color: #334155;
+      margin-top: 14px;
+      margin-bottom: 6px;
+      page-break-after: avoid;
+    }
+
+    .content-body p {
+      margin-bottom: 10px;
+      text-align: justify;
+    }
+
+    .content-body ul, .content-body ol {
+      margin-left: 20px;
+      margin-bottom: 12px;
+    }
+
+    .content-body li {
+      margin-bottom: 4px;
+    }
+
+    .content-body blockquote {
+      border-left: 4px solid #3b82f6;
+      background: #f8fafc;
+      padding: 10px 14px;
+      border-radius: 0 6px 6px 0;
+      margin: 14px 0;
+      color: #475569;
+      font-style: italic;
+      page-break-inside: avoid;
+    }
+
+    .content-body code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 8.5pt;
+      background: #f1f5f9;
+      color: #0f172a;
+      padding: 2px 5px;
+      border-radius: 4px;
+      border: 1px solid #e2e8f0;
+    }
+
+    .content-body pre {
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 14px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 14px 0;
+      page-break-inside: avoid;
+    }
+
+    .content-body pre code {
+      background: transparent;
+      color: inherit;
+      padding: 0;
+      border: none;
+      font-size: 8pt;
+      line-height: 1.45;
+    }
+
+    .content-body table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 8.5pt;
+      page-break-inside: avoid;
+    }
+
+    .content-body th, .content-body td {
+      border: 1px solid #cbd5e1;
+      padding: 8px 10px;
+      text-align: left;
+    }
+
+    .content-body th {
+      background-color: #f1f5f9;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .content-body tr:nth-child(even) {
+      background-color: #f8fafc;
+    }
+
+    .content-body hr {
+      border: none;
+      border-top: 1px solid #e2e8f0;
+      margin: 24px 0;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Cover Page -->
+  <div class="cover-page">
+    <div class="cover-header">
+      <div class="brand-logo">Fineduc</div>
+      <div class="cover-meta-badge">Technical Specification & Architecture</div>
+    </div>
+    
+    <div class="cover-body">
+      <h1 class="cover-title">Fee Collection SaaS for Private African Schools</h1>
+      <p class="cover-subtitle">
+        A resilient, multi-tenant platform built for the financial realities of Central & West Africa:
+        integer minor-unit ledgering, Postgres Row-Level Security, multi-channel automated reminders, and real-time reconciliation.
+      </p>
+
+      <div class="cover-highlights">
+        <div class="highlight-card">
+          <div class="highlight-title">Architecture</div>
+          <div class="highlight-val">NestJS + Postgres RLS + Redis</div>
+        </div>
+        <div class="highlight-card">
+          <div class="highlight-title">Financial Model</div>
+          <div class="highlight-val">Append-Only Double Entry</div>
+        </div>
+        <div class="highlight-card">
+          <div class="highlight-title">Currency Support</div>
+          <div class="highlight-val">0-decimal (XAF, XOF) + ISO</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cover-footer">
+      <div>Author: Fineduc Engineering</div>
+      <div>Confidential & Proprietary • 2026</div>
+    </div>
+  </div>
+
+  <!-- Table of Contents -->
+  <div class="toc-page page-break">
+    <h1 class="toc-header">Table of Contents</h1>
+    <div class="toc-grid">
+      
+    <div class="toc-card">
+      <span class="toc-num">01</span>
+      <span class="toc-text">Executive Summary & Product Requirements (PRD)</span>
+    </div>
+  
+    <div class="toc-card">
+      <span class="toc-num">02</span>
+      <span class="toc-text">Architecture Essentials (Quick Reference)</span>
+    </div>
+  
+    <div class="toc-card">
+      <span class="toc-num">03</span>
+      <span class="toc-text">Complete Technical Architecture & Specifications</span>
+    </div>
+  
+    <div class="toc-card">
+      <span class="toc-num">04</span>
+      <span class="toc-text">Development Principles & Invariants (AGENTS.md)</span>
+    </div>
+  
+    </div>
+  </div>
+
+  <!-- Markdown Sections -->
+  
+      <section id="section-1" class="doc-section page-break">
+        <div class="section-badge">Section 01</div>
+        <h1 class="section-title">Executive Summary & Product Requirements (PRD)</h1>
+        <div class="content-body">
+          <h1>PRD — Fineduc</h1>
+<blockquote>
+<p><strong>Product Requirement Document.</strong> What we are building, who it is for, and what the product
+actually needs to do. Product-level only — no technology decisions. Technology lives in
+<a href="ARCHITECTURE.md">ARCHITECTURE.md</a>.</p>
+</blockquote>
+<ul>
+<li><strong>Status:</strong> v1 draft, pre-code</li>
+<li><strong>Owner:</strong> founder</li>
+<li><strong>Last updated:</strong> 2026-08-18</li>
+</ul>
+<hr>
+<h2>1. Problem</h2>
+<p>Private schools in francophone and anglophone Africa run on a broken fee-collection loop.</p>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>What it costs the school</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Chasing fees by hand</strong> — the bursar calls parents one by one, class list in hand</td>
+<td>Weeks of staff time per term; collection depends on one person&#39;s memory</td>
+</tr>
+<tr>
+<td><strong>Late payments</strong> — no schedule the parent can see, no reminder before the due date</td>
+<td>Cash arrives after salaries and suppliers are due; the school borrows to bridge</td>
+</tr>
+<tr>
+<td><strong>Untracked cash</strong> — parents pay in banknotes at the desk, receipt book is a carbon pad</td>
+<td>Money leaks between the desk and the safe; nobody can prove what was collected on a given day</td>
+</tr>
+<tr>
+<td><strong>Millions never recovered</strong> — arrears roll from term to term, then year to year</td>
+<td>At year-end the school writes off a large share of what it was owed</td>
+</tr>
+<tr>
+<td><strong>The director is blind</strong> — the real position is known only after a manual month-end reconciliation</td>
+<td>Decisions (hiring, works, salaries) are made on a number that is weeks stale</td>
+</tr>
+</tbody></table>
+<p>The root cause is not fraud and not laziness. It is that <strong>the fee ledger only exists on paper
+and in one person&#39;s head</strong>, so nothing about it can be scheduled, reminded, reconciled, or seen
+in real time.</p>
+<h2>2. Solution</h2>
+<p><strong>Fineduc gives every student a file, every fee a due date, and every payment a trace.</strong></p>
+<p>Four moves, in the order they unlock value:</p>
+<ol>
+<li><strong>A file per student</strong> (<em>un dossier par élève</em>) — one record holding the student, the
+guardians who pay, what is owed, what has been paid, what remains. Replaces the register,
+the receipt book and the bursar&#39;s memory.</li>
+<li><strong>Instalments</strong> (<em>des échéances</em>) — the year&#39;s fees split into dated tranches the moment
+the student is enrolled. The parent knows the amount and the date in advance.</li>
+<li><strong>Automatic reminders</strong> (<em>rappels automatiques SMS / WhatsApp</em>) — the system messages the
+guardian before the due date, on the due date, and after. Nobody has to remember.</li>
+<li><strong>Mobile money payment</strong> — the parent pays from the phone that received the reminder,
+through a <strong>third-party payment aggregator</strong> (never a direct telco integration).
+Reconciliation is automatic because the payment arrives already attached to a student.</li>
+</ol>
+<p>And the outcome the buyer actually pays for:</p>
+<ol start="5">
+<li><strong>The director sees everything, in real time</strong> (<em>le directeur voit tout en temps réel</em>) —
+collected today, expected this month, arrears by class, cash desk status, all live.</li>
+</ol>
+<h3>Positioning</h3>
+<blockquote>
+<p><strong>Fineduc — the school fee ledger that collects by itself.</strong>
+<em>Un dossier par élève, des échéances claires, des rappels automatiques, le paiement mobile
+money. Le directeur voit tout en temps réel.</em></p>
+</blockquote>
+<h2>3. Who it is for</h2>
+<h3>Buyer / champion — <strong>the Director / Proprietor</strong> (<em>Directeur, Promoteur, Fondateur</em>)</h3>
+<p>Owns the P&amp;L. Feels the pain as a cash-flow number. Buys because of the real-time view and the
+recovery rate. <strong>Rarely opens a computer — decides from a phone.</strong>
+Success = <em>&quot;I know my position without asking anyone.&quot;</em></p>
+<h3>Daily driver — <strong>the Bursar / Accountant</strong> (<em>Économe, Comptable</em>)</h3>
+<p>Lives in the product 4+ hours a day. Enrols students, builds fee schedules, allocates payments,
+closes the cash desk, chases arrears. Will kill the product if it is slower than their
+notebook. Success = <em>&quot;I closed the desk in five minutes and it balanced.&quot;</em></p>
+<h3>Cashier (<em>Caissier</em>)</h3>
+<p>Takes cash and issues receipts at the desk. Often junior. Needs three taps, not thirty.
+Success = <em>&quot;receipt printed, parent gone.&quot;</em></p>
+<h3>Payer — <strong>the Guardian</strong> (<em>Parent, Tuteur</em>)</h3>
+<p><strong>Never logs in.</strong> Receives WhatsApp/SMS, taps a link, pays with mobile money, gets a receipt
+back on the same thread. Frequently: low literacy, shared phone, several children in the
+school, pays in irregular slices as income allows.
+Success = <em>&quot;I paid without going to the school.&quot;</em></p>
+<h3>Not our user in v1</h3>
+<p>Teachers, students, ministry inspectors. No grades, no attendance, no timetable. <strong>Fineduc is
+not a school management system.</strong> It is a fee-recovery system. This boundary is the product.</p>
+<h2>4. Scope</h2>
+<h3>v1 — must ship</h3>
+<h4>Student file</h4>
+<ul>
+<li>Student record: identity, photo, class, academic year, status (enrolled / left / graduated)</li>
+<li>Guardians attached to a student, each with a phone number, a relationship, and a
+<code>pays_fees</code> flag; one guardian may hold several students</li>
+<li>Enrolment (<em>inscription</em>) into a class for an academic year — the act that creates money owed</li>
+<li>Re-enrolment for the next year, carrying the outstanding balance forward</li>
+<li>Sibling linkage (same guardian → one consolidated view, one message)</li>
+</ul>
+<h4>Fees and instalments</h4>
+<ul>
+<li>Fee schedule (<em>grille tarifaire</em>) per class per academic year, composed of fee items:
+tuition (<em>scolarité</em>), registration (<em>frais de dossier</em>), exam, canteen, transport, uniform,
+boarding — each recurring or one-off</li>
+<li>Instalment plan (<em>échéancier</em>): the year&#39;s total split into dated tranches (typically three,
+configurable per school and per class)</li>
+<li>Discounts and scholarships: sibling, staff-child, merit, hardship — percentage or fixed
+amount, applied at fee-item or student level, and <strong>always attributable to whoever granted it</strong></li>
+<li>Per-student payment arrangement (<em>arrangement</em>) overriding the class plan, with an approval trail</li>
+</ul>
+<h4>Payment</h4>
+<ul>
+<li><strong>Mobile money via a third-party aggregator</strong> — MTN MoMo, Orange Money, Moov, Wave, card,
+all reached through one aggregator account. Fineduc holds <strong>no</strong> direct telco contract and
+<strong>no</strong> licence.</li>
+<li>Cash at the desk, always inside a cash session (below)</li>
+<li>Bank transfer / cheque, recorded manually with a reference</li>
+<li><strong>Partial payment is the norm, not the exception.</strong> A parent paying 12 000 against a 45 000
+instalment must be a first-class, one-tap operation</li>
+<li>Allocation: a payment settles the oldest instalment first by default, with manual override</li>
+<li>Receipt on every payment — numbered, immutable, re-sendable to the guardian</li>
+<li>Overpayment becomes a credit balance carried to the next instalment</li>
+<li>Refund and reversal — restricted, reason-coded, dual-approval, never a delete</li>
+</ul>
+<h4>Cash control — the answer to <em>espèces mal tracées</em></h4>
+<ul>
+<li>Cash session: a named cashier opens a desk with a declared opening float, takes payments,
+closes with a declared count</li>
+<li>The system computes expected cash, shows the variance, and <strong>requires a reason for any variance</strong></li>
+<li>A session cannot be reopened after close; corrections are new, signed entries</li>
+<li>Daily cash report per cashier, per desk, per day — the artefact the director reviews</li>
+</ul>
+<h4>Reminders</h4>
+<ul>
+<li>Reminder rules per school: offsets relative to the instalment due date (D-7, D-2, D-day,
+D+3, D+10, D+30), each with a channel and a template</li>
+<li>Channels: <strong>WhatsApp first</strong> (cheap, rich, threaded), <strong>SMS fallback</strong> (universal, works on
+feature phones with no data)</li>
+<li>Templates in French and English, per school, with variables (<code>{parent}</code>, <code>{eleve}</code>,
+<code>{classe}</code>, <code>{montant}</code>, <code>{echeance}</code>, <code>{lien}</code>) and a school signature</li>
+<li>Every reminder carries a <strong>payment link</strong> — tap, pay, done</li>
+<li>Escalation ladder: gentle → firm → formal notice, tone set by the school</li>
+<li>Quiet hours, per-guardian frequency cap, immediate stop on payment</li>
+<li>Opt-out honoured and recorded</li>
+<li>Full message log: sent, delivered, read, failed, cost — visible to the bursar</li>
+<li>Manual send: to one guardian, one class, or a filtered debtor list</li>
+</ul>
+<h4>Director dashboard, real time</h4>
+<ul>
+<li>Collected today / this week / this term, against expected</li>
+<li>Recovery rate for the term and for the year</li>
+<li>Arrears (<em>impayés</em>) ranked by class, by amount, by age bucket (0-30 / 31-60 / 61-90 / 90+ days)</li>
+<li>Cash desk status right now: open sessions, cashier, amount held</li>
+<li>Payment-method mix (mobile money vs cash vs transfer) — the number that proves cash is shrinking</li>
+<li>Reminder performance: sent, delivered, and amount collected within 72h of a reminder</li>
+<li><strong>Mobile-first.</strong> The director looks at this on a phone, standing up. Design for that first.</li>
+<li>Export to Excel/PDF for the board, the auditor, the bank</li>
+</ul>
+<h4>Administration and security</h4>
+<ul>
+<li>Multi-tenant: one school = one tenant, hard-isolated. A group with several campuses is one
+tenant with several sites.</li>
+<li>Roles: Director, Bursar, Cashier, Secretary, Read-only (auditor). Least privilege by default.</li>
+<li>Two-factor for Director and Bursar</li>
+<li>Append-only audit log on every money-touching and permission-touching action — who, what,
+before, after, when, from where</li>
+<li>Academic year lifecycle: open → active → closed. A closed year is read-only.</li>
+<li>Full data export owned by the school</li>
+</ul>
+<h3>v1.1 — next, not now</h3>
+<p>Parent self-service portal · standing orders / auto-debit · bulk enrolment import from Excel ·
+offline-capable cashier mode · payment-plan simulator · WhatsApp inbound (parent replies
+&quot;solde&quot;, gets their balance) · USSD/IVR balance check.</p>
+<h3>Explicitly out of scope</h3>
+<p>Grades, attendance, timetable, payroll, library, transport routing, HR, e-learning, a general
+ledger, direct telco payment integration, and holding funds. <strong>Fineduc is never a payment
+institution</strong> — money moves aggregator → school account, never through us.</p>
+<h2>5. Constraints that shape everything</h2>
+<p>These are not footnotes. They are the design.</p>
+<ul>
+<li><strong>The currency has no decimals.</strong> XAF and XOF are ISO-4217 exponent <strong>0</strong>. There are no
+centimes. Every money value is an integer of the currency itself. Any float, any
+<code>amount * 100</code>, any two-decimal display is a bug.</li>
+<li><strong>The network is bad.</strong> 2G/3G, dropped requests, duplicate submissions. Every write that
+moves money must be idempotent. The cashier <em>will</em> press the button twice.</li>
+<li><strong>Phone numbers are the identity.</strong> Guardians are reached by phone, not email. Numbers are
+shared between households, change often, and are entered inconsistently (<code>+237 6xx</code>, <code>06xx</code>,
+<code>2376xx</code>). Normalise to E.164 on the way in, always.</li>
+<li><strong>Messaging costs real money.</strong> Every SMS is a cost line; WhatsApp utility conversations are
+far cheaper. Reminder volume must be capped, budgeted and visible — a runaway loop is a
+financial incident, not just a bug.</li>
+<li><strong>Payment confirmation is asynchronous and unreliable.</strong> The aggregator&#39;s webhook may arrive
+late, twice, or never. Never trust the browser redirect. The webhook is authoritative;
+polling reconciliation is the safety net.</li>
+<li><strong>Two languages, one product.</strong> French-first UI, English available. Templates in both.</li>
+<li><strong>Low-end Android, small data budget.</strong> The dashboard must be usable on a three-year-old
+phone over 3G.</li>
+<li><strong>Trust is the sale.</strong> These schools have been burnt by software vendors and by staff. The
+audit trail and the cash reconciliation are not compliance features — they are the demo.</li>
+</ul>
+<h2>6. What success looks like</h2>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Target by end of first full term</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Collection rate at term end</td>
+<td>+15 points vs the school&#39;s previous term</td>
+</tr>
+<tr>
+<td>Share of fees paid by mobile money</td>
+<td>&gt; 40% (from ~0)</td>
+</tr>
+<tr>
+<td>Cash desk variance</td>
+<td>&lt; 0.5% of cash collected, every variance reasoned</td>
+</tr>
+<tr>
+<td>Bursar time spent chasing</td>
+<td>−60% self-reported</td>
+</tr>
+<tr>
+<td>Amount collected within 72h of a reminder</td>
+<td>tracked, reported, used in the sales pitch</td>
+</tr>
+<tr>
+<td>Director dashboard opened</td>
+<td>≥ 4 days a week</td>
+</tr>
+<tr>
+<td>Reminder delivery rate</td>
+<td>&gt; 95%</td>
+</tr>
+</tbody></table>
+<p>Anti-metric, watched weekly: <strong>messaging cost per 1 000 XAF collected.</strong> If it rises, the
+reminder ladder is wrong.</p>
+<h2>7. Pricing</h2>
+<p>Priced off what a school actually recovers, and off what it costs us to serve them.</p>
+<h3>Cost floor per school per month</h3>
+<ul>
+<li>Infrastructure (shared): ~2 000–4 000 XAF</li>
+<li>WhatsApp utility conversations: ~3–15 XAF each</li>
+<li>SMS: ~15–25 XAF each — <strong>the dominant variable cost</strong></li>
+<li>Payment aggregator: 1.5–3.5% of value, <strong>paid by the payer or the school, never absorbed by us</strong></li>
+<li>Support and onboarding, amortised: ~10 000–20 000 XAF</li>
+</ul>
+<p>A 300-student school on a three-reminder ladder generates ~900 messages/month. All-SMS that is
+~18 000 XAF. <strong>This is why messaging is a metered wallet, not an unlimited inclusion.</strong></p>
+<h3>Model: platform subscription (sized by enrolled students) + prepaid message wallet</h3>
+<table>
+<thead>
+<tr>
+<th>Plan</th>
+<th>For</th>
+<th>Price</th>
+<th>Included</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Essentiel</strong></td>
+<td>up to 250 students</td>
+<td><strong>25 000 XAF / month</strong> <em>(~$40)</em></td>
+<td>Student files, instalments, cash sessions, mobile money, director dashboard, 2 staff + 2 cashiers, <strong>500 WhatsApp msgs/mo</strong></td>
+</tr>
+<tr>
+<td><strong>Croissance</strong></td>
+<td>251–800 students</td>
+<td><strong>60 000 XAF / month</strong> <em>(~$100)</em></td>
+<td>Everything, unlimited users, escalation ladder, multi-desk cash control, Excel/PDF export, <strong>2 000 WhatsApp msgs/mo</strong>, priority support</td>
+</tr>
+<tr>
+<td><strong>Institution</strong></td>
+<td>800+ / multi-campus</td>
+<td><strong>from 120 000 XAF / month</strong></td>
+<td>Everything, multi-site consolidation, custom templates, API access, named account manager, on-site onboarding</td>
+</tr>
+</tbody></table>
+<p><strong>Annual, paid up front: −20%.</strong> This matches how schools budget — they pay once, at the start
+of the year, out of registration income. Expect most revenue here.</p>
+<p><strong>Message wallet</strong> — prepaid credits, never a surprise bill:</p>
+<ul>
+<li>WhatsApp <strong>10 XAF</strong> / message · SMS <strong>30 XAF</strong> / message</li>
+<li>Packs: 10 000 msgs for 85 000 XAF · 50 000 msgs for 375 000 XAF</li>
+<li>The school sets a monthly cap. At the cap, sending stops and the bursar is warned.</li>
+</ul>
+<p><strong>One-off onboarding: 150 000 XAF</strong> — migration from the existing registers, fee-schedule
+setup, two staff training sessions. Waived on an annual Croissance or Institution contract.
+This is not a margin line; it is the thing that makes the school actually adopt.</p>
+<p><strong>Aggregator fees are passed through</strong>, configurable per school: charged to the parent
+(default) or borne by the school. Fineduc never touches the money and never nets a fee out of it.</p>
+<h3>Sanity check</h3>
+<p>A 400-student school charging 250 000 XAF/year collects 100 000 000 XAF. Croissance annual is
+576 000 XAF — <strong>0.58% of collections.</strong> Recovering even 3% more arrears returns 3 000 000 XAF.
+The pitch is one sentence: <em>you pay us out of what we recover for you.</em></p>
+<h3>Deliberately not doing</h3>
+<p>Percentage-of-collections pricing (feels like a tax, invites disputes, drags us toward
+payment-institution regulation) · a free tier (these are businesses; free attracts schools that
+never adopt) · per-user seats (punishes the cashier count, which we want high).</p>
+<h2>8. Landing page</h2>
+<p>Marketing site for African private schools. French-first, English toggle.</p>
+<p><strong>Design reference:</strong> the FintechX Framer template mirrored in <code>D:\mes site\fineduc</code>.
+Dark <code>#1d1d1d</code> on off-white <code>#edf1f4</code>, slate body <code>#4d585f</code>, accent blue <code>#3b82f6</code>, positive
+emerald <code>#10b981</code>, Inter throughout. Generous whitespace, large rounded cards, soft shadows,
+scroll-triggered reveals, sticky-scroll step stacks, a live-looking dashboard mock as the hero.
+Calm, financial, credible — <strong>not</strong> a colourful edtech look. These buyers need to see a bank,
+not a school.</p>
+<p><strong>Section order</strong></p>
+<ol>
+<li><strong>Hero</strong> — <em>&quot;Arrêtez de courir après les frais de scolarité.&quot;</em> Sub: one file per student,
+automatic reminders, mobile money payment, real-time view. CTAs <strong>Demander une démo</strong> /
+<strong>Voir le tableau de bord</strong>. Trust strip: schools using it · students managed · amount recovered.</li>
+<li><strong>Avant / Après Fineduc</strong> — the template&#39;s before/after toggle, carrying our five pains and
+five fixes.</li>
+<li><strong>Core features</strong> — student file, instalments, reminders, mobile money, cash control,
+director view.</li>
+<li><strong>Director dashboard showcase</strong> — the real screen, on a phone. This is the money shot.</li>
+<li><strong>How it works</strong>, three sticky steps — <em>Import your students → Set your fee schedule →
+Reminders and payments run by themselves.</em> &quot;Live in 48 hours.&quot;</li>
+<li><strong>Security and trust</strong> — audit trail, encryption, the data belongs to the school, no funds
+held, role separation. Written to convince a suspicious director.</li>
+<li><strong>Who it is for</strong> — nursery/primary, secondary, bilingual, technical, multi-campus groups.</li>
+<li><strong>Numbers</strong> — recovery-rate lift, cash-share reduction, time saved. Real ones, once we have them.</li>
+<li><strong>Testimonial</strong> — one director, named, with a number.</li>
+<li><strong>Pricing</strong> — three plans, annual toggle, wallet explained plainly.</li>
+<li><strong>FAQ</strong> — Do you touch our money? (no) · Which mobile money operators? · Does it work when
+the internet is down at the desk? · Can parents pay in slices? · We already use Excel — why
+change? · Who owns the data?</li>
+<li><strong>Final CTA + footer.</strong></li>
+</ol>
+<p>Pages: <code>/</code> · <code>/fonctionnalites</code> · <code>/tarifs</code> · <code>/securite</code> · <code>/demo</code> · <code>/contact</code> · <code>/blog</code> ·
+<code>/legal/*</code>. A WhatsApp contact button on every page — that is how these buyers get in touch.</p>
+<h2>9. Hard questions</h2>
+<p><em>Asked of the plan before writing code. The answers are kept here because they are requirements.</em></p>
+<h3>What will break?</h3>
+<ul>
+<li><strong>Reconciliation drift.</strong> The aggregator says paid, we say pending, the parent has a
+confirmation SMS and is standing at the desk. → The webhook is authoritative; a scheduled job
+re-queries every non-final payment; a manual &quot;force reconcile&quot; exists and is audited.</li>
+<li><strong>Double payment.</strong> Bad network, parent taps twice, two debits. → Idempotency key on every
+initiation, keyed to student + instalment + amount + a short window; automatic detection of
+duplicate settlements and a one-tap refund path.</li>
+<li><strong>The reminder storm.</strong> A bug, a retry loop, or a bad rule messages 3 000 guardians at 02:00.
+Simultaneously a money loss, a trust loss, and possibly the end of the contract. → Hard
+per-tenant daily cap, quiet hours enforced at the <em>send</em> layer (not the scheduler),
+per-guardian frequency cap, kill switch, and every send debited from a visible wallet.</li>
+<li><strong>Reminding someone who already paid.</strong> The fastest way to lose a school. → Reminder state is
+resolved at send time against the live balance, never at schedule time.</li>
+<li><strong>A wrong phone number.</strong> The number belongs to a stranger, or to a guardian who left — and
+now a stranger receives a debt notice naming a child. That is a privacy incident. → Number
+validation, failure tracking that quarantines a number after N bounces, and guardian
+confirmation before the first send.</li>
+<li><strong>A cash session never closed.</strong> The cashier goes home. → Auto-flag at end of day, escalate
+to the bursar, block the next session on that desk.</li>
+<li><strong>Timezone and due-date arithmetic.</strong> &quot;Due today&quot; computed in UTC fires reminders a day
+early. → Every tenant has a timezone; every due date is a calendar date in tenant time, never
+a timestamp.</li>
+<li><strong>Mid-year fee changes.</strong> The school raises fees in January; some students already have
+instalments. → Fee schedules are versioned and effective-dated; existing instalments are
+never silently mutated — a change creates an adjustment line.</li>
+<li><strong>The bursar who does not trust it.</strong> Runs the notebook in parallel for a term, then the two
+disagree. → Import their notebook on day one; make the daily cash report match their format.</li>
+<li><strong>Aggregator outage on the last day of term.</strong> Peak day, provider down. → Cash and transfer
+paths never depend on the aggregator; queue and retry initiations; show status honestly to
+the bursar.</li>
+</ul>
+<h3>What edge cases are we missing?</h3>
+<p>Student leaves mid-year holding a credit balance · a guardian pays for three children in one
+transfer · two guardians pay the same instalment at the same moment · a payment arrives for a
+student who was never enrolled (wrong reference) · sibling discount when one sibling withdraws ·
+the academic year is closed but a late payment arrives for it · a guardian phone shared by two
+families · a partial refund on a partially-allocated payment · a school changing its instalment
+count mid-year · a cashier who is also a guardian · a payment in a currency other than the
+tenant currency · a student enrolled in two schools of the same group.</p>
+<h3>What is over-engineered?</h3>
+<p>Cut from v1, deliberately: a parent-facing portal (<strong>WhatsApp is the portal</strong>) · a full
+double-entry general ledger (a student ledger plus a cash ledger is enough — we are not the
+accountant) · a rules engine for reminders (a fixed offset ladder covers every school we have
+spoken to) · offline-first sync (a slow online desk beats a wrong offline one — revisit in v1.1
+with real data) · microservices (one deployable, clean modules) · multiple aggregators on day
+one (one, behind a port; a second when a real school demands it) · in-app chat, an analytics
+warehouse, ML arrears prediction, and a native mobile app (the dashboard is a good web app).</p>
+
+        </div>
+      </section>
+    
+      <section id="section-2" class="doc-section page-break">
+        <div class="section-badge">Section 02</div>
+        <h1 class="section-title">Architecture Essentials (Quick Reference)</h1>
+        <div class="content-body">
+          <h1>ARCHITECTURE-ESSENTIALS — Fineduc</h1>
+<blockquote>
+<p><strong>The outline only.</strong> Load this on every task. Open the full
+<a href="ARCHITECTURE.md">ARCHITECTURE.md</a> only when you need the detail behind a line here.</p>
+</blockquote>
+<hr>
+<h2>What it is</h2>
+<p>Fee-collection SaaS for private schools in Africa. One file per student, dated instalments,
+automatic WhatsApp/SMS reminders, mobile-money payment through a <strong>third-party aggregator</strong>,
+real-time director dashboard. <strong>Not</strong> a school-management system.</p>
+<h2>Stack</h2>
+<p>TypeScript · Node 22 · <strong>NestJS</strong> API · <strong>PostgreSQL 16</strong> (+RLS) · <strong>Prisma</strong> · <strong>Redis</strong> ·
+<strong>BullMQ</strong> workers · <strong>Zod</strong> contracts · <strong>Next.js 15</strong> dashboard / pay page / landing ·
+S3 (R2) · Sentry + OTel.
+Monorepo: pnpm workspaces + Turborepo. Modular monolith — <strong>no microservices, no GraphQL.</strong></p>
+<h2>Layout</h2>
+<pre><code>apps/     api · worker · dashboard · pay · web
+packages/ domain · db · contracts · providers · money · config · ui
+</code></pre>
+<p><code>domain</code> imports nothing. Apps never import from apps. Enforced by lint in CI.</p>
+<h2>The ten rules — break one and the system is wrong</h2>
+<ol>
+<li><strong>XAF/XOF have ZERO decimals.</strong> Money is <code>bigint</code> minor units + an explicit currency
+exponent. No floats. No hard-coded <code>× 100</code>. All arithmetic via <code>packages/money</code>.</li>
+<li><strong>Money tables are append-only.</strong> Never update, never delete a payment or a ledger entry.
+Corrections are new, signed, reason-coded rows.</li>
+<li><strong>Balances are projections</strong>, written only in the same transaction as the ledger entry that
+changes them, and verified by the nightly integrity sweep.</li>
+<li><strong>Tenant isolation is Postgres RLS.</strong> <code>set local app.tenant_id</code> inside a transaction, on
+every request and every job. The API role has <strong>no</strong> <code>BYPASSRLS</code>.</li>
+<li><strong><code>Idempotency-Key</code> is mandatory</strong> on every money-moving POST and every message send.</li>
+<li><strong>The webhook is authoritative; the browser redirect is a hint.</strong> Store the raw event first
+(unique on <code>provider + event_id</code>), return 200 fast, do the work in a job.</li>
+<li><strong>Reminder eligibility is decided at SEND time, not schedule time.</strong> Re-check the live
+balance. Messaging a parent who already paid is the fastest way to lose a school.</li>
+<li><strong>Provider names never appear in domain code.</strong> Payment and messaging are ports with
+swappable adapters. No direct telco integration, ever.</li>
+<li><strong><code>due_on</code> is a <code>DATE</code> in tenant timezone.</strong> Never a timestamp. Never UTC arithmetic.</li>
+<li><strong>Every mutating request writes an <code>audit_log</code> row.</strong> That table has INSERT/SELECT grants
+only.</li>
+</ol>
+<h2>Core data model</h2>
+<pre><code>tenant ─ site ─ user ─ membership(role)
+academic_year ─ term ─ grade_level ─ class_group
+student ─ student_guardian ─ guardian
+enrollment            ← the act that creates money owed
+  └ invoice ─ invoice_line ─ discount ─ adjustment
+       └ instalment    ← what reminders and payments hang off
+            └ payment_allocation ─ payment ─ receipt / refund
+student_ledger_entry  ← APPEND-ONLY truth of a student&#39;s account
+cash_desk ─ cash_session ─ cash_movement     ← the anti-leak control
+reminder_rule ─ reminder_schedule ─ message ─ message_credit_ledger
+message_template · payment_link · provider_event · outbox · audit_log
+</code></pre>
+<h2>Modules</h2>
+<p><code>identity</code> · <code>tenancy</code> · <code>academics</code> · <code>students</code> · <strong><code>billing</code></strong> · <strong><code>payments</code></strong> ·
+<strong><code>cashbox</code></strong> · <strong><code>messaging</code></strong> · <code>analytics</code> · <code>audit</code> · <code>platform</code>.
+Cross-module calls go through the public service interface only — never into another module&#39;s
+repository.</p>
+<h2>The four flows that matter</h2>
+<ul>
+<li><strong>Enrol →</strong> one transaction: enrollment + invoice + lines + discounts + instalments + ledger
+entries. Invariant: <code>Σ instalment.amount == invoice.net_minor</code>.</li>
+<li><strong>Pay (mobile money) →</strong> initiate (idempotent, re-validate against the <strong>live</strong> balance) →
+aggregator → <strong>webhook</strong> → job → lock invoice <code>FOR UPDATE</code> → allocate oldest-due-first →
+ledger → cancel that instalment&#39;s reminders → receipt.</li>
+<li><strong>Pay (cash) →</strong> requires an open <code>cash_session</code>; same allocation path; <strong>gapless</strong> receipt
+number from a locked counter row (not a Postgres sequence — sequences gap on rollback).</li>
+<li><strong>Remind →</strong> nightly scheduler materialises intent; the sender every 15 min re-checks: paid?
+opted out? quarantined? quiet hours? frequency cap? tenant daily cap? credits &gt; 0? — <strong>all
+limits live in the sender, not the scheduler.</strong></li>
+</ul>
+<h2>Security</h2>
+<p>argon2id · JWT 15 min + rotating refresh with reuse detection · TOTP 2FA for Director &amp; Bursar ·
+RBAC deny-by-default (Director / Bursar / Cashier / Secretary / Auditor) · <strong>four-eyes</strong> on
+refunds, reversals, large discounts and cash-variance reconciliation · Zod at every boundary ·
+rate limits · signature-verified webhooks with a replay window · payment-link tokens carry no
+PII · PII redacted from logs · secrets from env only, validated at boot.
+<strong>Fineduc never holds funds</strong> — the aggregator settles directly to the school&#39;s account.</p>
+<h2>Providers (v1)</h2>
+<p>Payment: <strong>CinetPay</strong> primary, Flutterwave secondary, Manual (cash/transfer), Fake (tests).
+Messaging: <strong>WhatsApp Cloud API</strong> first (cheap), SMS aggregator fallback, Console/Fake.
+Every adapter must pass the same port contract test suite.</p>
+<h2>Jobs</h2>
+<p><code>webhook-processor</code> · <code>reminder-scheduler</code> (02:00 tenant tz) · <code>message-sender</code> (15 min) ·
+<code>message-status</code> · <code>reconciler</code> (30 min) · <code>integrity-sweep</code> (03:00) · <code>receipt-renderer</code> ·
+<code>exporter</code> · <code>director-digest</code> (07:00 tenant tz) · <code>outbox-publisher</code> (5 s).
+Every payload carries <code>tenantId</code> + <code>requestId</code> and sets <code>app.tenant_id</code>.</p>
+<h2>API</h2>
+<p>REST <code>/api/v1</code>, Bearer JWT, OpenAPI from Zod. Cursor pagination. RFC 9457 problem+json errors.
+Money on the wire: <code>{ &quot;amountMinor&quot;: &quot;45000&quot;, &quot;currency&quot;: &quot;XAF&quot; }</code> — <strong>a string</strong>, so no client
+loses precision. Due dates: plain <code>YYYY-MM-DD</code>.
+Public, unauthenticated, hostile-territory endpoints: <code>GET /pay/:token</code>,
+<code>POST /pay/:token/initiate</code>, <code>POST /webhooks/*</code>.</p>
+<h2>Build order — backend first, strictly</h2>
+<p>1 foundation (money, schema, <strong>RLS + cross-tenant test</strong>) → 2 identity/tenancy → 3 students →
+<strong>4 billing</strong> (hardest — over-test it) → <strong>5 cash payments</strong> (usable school, zero providers) →
+6 mobile money + webhooks → 7 messaging → 8 analytics → 9 dashboard UI → 10 landing page.</p>
+<h2>UI</h2>
+<p>Dashboard: Next.js + TanStack Query + Tailwind + shadcn/ui + Recharts. <strong>Mobile-first at 360 px
+— the director decides from a phone.</strong> French-first, English toggle.
+<strong>Optimistic UI is banned on money operations.</strong>
+Landing: FintechX Framer look — <code>#1d1d1d</code> on <code>#edf1f4</code>, slate <code>#4d585f</code>, blue <code>#3b82f6</code>,
+emerald <code>#10b981</code>, Inter, scroll reveals, sticky step stacks. Calm and financial, not edtech.</p>
+<h2>Pricing (drives plan limits in code)</h2>
+<p>Essentiel 25 000 XAF/mo ≤250 students, 500 msgs · Croissance 60 000 XAF/mo ≤800, 2 000 msgs ·
+Institution from 120 000 XAF/mo. Annual −20%. Prepaid message wallet (WhatsApp 10 XAF, SMS
+30 XAF). Onboarding 150 000 XAF. Aggregator fees passed through, never absorbed.</p>
+<h2>The five things most likely to break</h2>
+<ol>
+<li>Balance projections drifting from the ledger → nightly integrity sweep, page on mismatch.</li>
+<li>Tenant leaking through a pooled connection → <code>set local</code> in a transaction + a CI test.</li>
+<li>A reminder storm or reminding someone who already paid → all caps in the sender.</li>
+<li>Double payment on a bad network → idempotency keys + duplicate-settlement detection.</li>
+<li>Receipt-number gaps read as deleted receipts by an auditor → locked counter row.</li>
+</ol>
+
+        </div>
+      </section>
+    
+      <section id="section-3" class="doc-section page-break">
+        <div class="section-badge">Section 03</div>
+        <h1 class="section-title">Complete Technical Architecture & Specifications</h1>
+        <div class="content-body">
+          <h1>ARCHITECTURE — Fineduc</h1>
+<blockquote>
+<p>The complete technical file: stack, system design, data models, module boundaries, security,
+integrations, jobs, and deployment. This is the long one — it holds all the detail.
+For the fast reference an agent should load first, see
+<a href="ARCHITECTURE-ESSENTIALS.md">ARCHITECTURE-ESSENTIALS.md</a>.
+For <em>what</em> and <em>why</em>, see <a href="PRD.md">PRD.md</a>.</p>
+</blockquote>
+<ul>
+<li><strong>Status:</strong> v1 design, pre-code</li>
+<li><strong>Last updated:</strong> 2026-08-18</li>
+</ul>
+<hr>
+<h2>1. Guiding principles</h2>
+<ol>
+<li><strong>The ledger is the product.</strong> Everything else — reminders, dashboards, links — is a view
+over, or a trigger on, a correct student ledger. Get the ledger right and the rest is easy.</li>
+<li><strong>Money is append-only.</strong> No money row is ever updated or deleted. Corrections are new,
+signed, reason-coded rows. A balance is a projection, never an authoritative field you edit.</li>
+<li><strong>Integers only, currency exponent respected.</strong> XAF/XOF have <strong>zero</strong> decimal places.
+Store <code>bigint</code> in the currency&#39;s minor unit and carry the exponent explicitly.
+Never a float. Never a hard-coded <code>× 100</code>.</li>
+<li><strong>Idempotency everywhere a write moves money or sends a message.</strong> The network is bad, the
+webhooks retry, the cashier double-taps.</li>
+<li><strong>The tenant boundary is enforced by the database, not by remembering a <code>where</code> clause.</strong>
+Postgres Row-Level Security is the backstop for every application bug we have not written yet.</li>
+<li><strong>One deployable, clean modules.</strong> A modular monolith. Module boundaries are enforced by
+lint, not by network hops.</li>
+<li><strong>External providers are ports.</strong> Payment and messaging are interfaces with swappable
+adapters. No provider name appears in domain code, ever.</li>
+<li><strong>Backend-first.</strong> The API and the domain are complete and tested before a dashboard pixel
+is drawn. Every UI is a client of a documented API.</li>
+</ol>
+<h2>2. Stack</h2>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Choice</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Language</td>
+<td><strong>TypeScript 5.x</strong>, strict, <code>noUncheckedIndexedAccess</code></td>
+<td>One language across API, jobs, dashboard, landing. Types are the spec agents read.</td>
+</tr>
+<tr>
+<td>Runtime</td>
+<td><strong>Node.js 22 LTS</strong></td>
+<td>Stable, cheap to host, huge ecosystem for the providers we need.</td>
+</tr>
+<tr>
+<td>API framework</td>
+<td><strong>NestJS 11</strong></td>
+<td>Module boundaries, DI, guards and interceptors map exactly onto tenancy/auth/audit cross-cuts. Opinionated structure is a feature when agents write the code.</td>
+</tr>
+<tr>
+<td>Database</td>
+<td><strong>PostgreSQL 16</strong></td>
+<td>Transactions, RLS, <code>numeric</code>/<code>bigint</code>, partial indexes, <code>jsonb</code>, generated columns. The tenancy and money model depend on it.</td>
+</tr>
+<tr>
+<td>ORM / access</td>
+<td><strong>Prisma 6</strong> for schema + typed reads, <strong>raw SQL</strong> for money-critical writes and reports</td>
+<td>Prisma for velocity and a readable schema; SQL where locking and correctness matter.</td>
+</tr>
+<tr>
+<td>Migrations</td>
+<td><strong>Prisma Migrate</strong>, forward-only, reviewed</td>
+<td></td>
+</tr>
+<tr>
+<td>Cache / queue backing</td>
+<td><strong>Redis 7</strong></td>
+<td>Job queue, rate limits, idempotency keys, short-lived locks.</td>
+</tr>
+<tr>
+<td>Jobs &amp; scheduling</td>
+<td><strong>BullMQ</strong></td>
+<td>Reminder scheduling, webhook processing, reconciliation, exports. Retries with backoff, dead-letter queues, per-queue concurrency.</td>
+</tr>
+<tr>
+<td>Validation</td>
+<td><strong>Zod</strong> at every boundary</td>
+<td>One schema generates runtime validation + TS types + OpenAPI.</td>
+</tr>
+<tr>
+<td>Auth</td>
+<td><strong>JWT access (15 min) + rotating refresh (30 d)</strong>, argon2id passwords, TOTP 2FA</td>
+<td></td>
+</tr>
+<tr>
+<td>API docs</td>
+<td><strong>OpenAPI 3.1</strong>, generated from Zod</td>
+<td>The dashboard and landing consume it.</td>
+</tr>
+<tr>
+<td>Dashboard</td>
+<td><strong>Next.js 15</strong> (App Router) + <strong>TanStack Query</strong> + <strong>Tailwind</strong> + <strong>shadcn/ui</strong> + <strong>Recharts</strong></td>
+<td>Mobile-first; the director uses a phone.</td>
+</tr>
+<tr>
+<td>Landing</td>
+<td><strong>Next.js 15</strong>, static, + <strong>Framer Motion</strong></td>
+<td>Framer-template look; SSG for speed on 3G.</td>
+</tr>
+<tr>
+<td>Files</td>
+<td><strong>S3-compatible object storage</strong> (Cloudflare R2)</td>
+<td>Receipts, exports, student photos. Never in the database.</td>
+</tr>
+<tr>
+<td>PDF</td>
+<td><strong>@react-pdf/renderer</strong> in a worker</td>
+<td>Receipts and reports.</td>
+</tr>
+<tr>
+<td>Email (staff only)</td>
+<td><strong>Resend</strong></td>
+<td>Guardians are reached by WhatsApp/SMS, never email.</td>
+</tr>
+<tr>
+<td>Errors / tracing</td>
+<td><strong>Sentry</strong> + <strong>OpenTelemetry</strong> → Grafana Cloud</td>
+<td></td>
+</tr>
+<tr>
+<td>Logs</td>
+<td><strong>Pino</strong>, JSON, structured, <code>tenant_id</code> on every line, PII redacted</td>
+<td></td>
+</tr>
+<tr>
+<td>Tests</td>
+<td><strong>Vitest</strong> (unit), <strong>Supertest</strong> (API), <strong>Testcontainers</strong> (real Postgres), <strong>Playwright</strong> (dashboard)</td>
+<td></td>
+</tr>
+<tr>
+<td>Repo</td>
+<td><strong>pnpm workspaces + Turborepo</strong> monorepo</td>
+<td></td>
+</tr>
+<tr>
+<td>CI</td>
+<td><strong>GitHub Actions</strong></td>
+<td>typecheck → lint → test → migrate-check → build</td>
+</tr>
+<tr>
+<td>Hosting</td>
+<td>API + workers on <strong>Railway</strong> or <strong>Fly.io</strong> (Paris/Frankfurt region), Postgres managed with PITR, web on <strong>Vercel</strong></td>
+<td>Low latency to West/Central Africa; cheap at our scale.</td>
+</tr>
+</tbody></table>
+<h3>Deliberate non-choices</h3>
+<ul>
+<li><strong>No microservices.</strong> One API deployable, one worker deployable. Modules, not services.</li>
+<li><strong>No GraphQL.</strong> REST + OpenAPI. Fewer moving parts, easier caching, easier for agents.</li>
+<li><strong>No event-sourcing framework.</strong> The money tables <em>are</em> append-only; that is enough.</li>
+<li><strong>No Kafka.</strong> BullMQ on Redis handles our volume by three orders of magnitude.</li>
+<li><strong>No direct telco integration.</strong> One aggregator, behind a port. Non-negotiable — a direct
+MoMo/Orange contract drags us into licensing we do not want.</li>
+</ul>
+<h2>3. System shape</h2>
+<pre><code>                    ┌──────────────────────────────────────────────┐
+   Guardian phone   │  apps/web  (Next.js, static)                 │
+   WhatsApp / SMS   │  Landing • pricing • demo request            │
+        │           └──────────────────────────────────────────────┘
+        │
+        │  tap link      ┌──────────────────────────────────────────┐
+        └──────────────► │  apps/pay  (Next.js, public, no login)   │
+                         │  Payment link page → aggregator checkout │
+                         └────────────────┬─────────────────────────┘
+                                          │
+   Director / Bursar /   ┌────────────────┴─────────────────────────┐
+   Cashier browser  ───► │  apps/dashboard  (Next.js, authed)       │
+                         └────────────────┬─────────────────────────┘
+                                          │  REST + OpenAPI, Bearer JWT
+                         ┌────────────────▼─────────────────────────┐
+                         │  apps/api   (NestJS, modular monolith)   │
+                         │  ┌────────────────────────────────────┐  │
+                         │  │ identity · tenancy · students ·    │  │
+                         │  │ billing · payments · cashbox ·     │  │
+                         │  │ messaging · analytics · audit      │  │
+                         │  └────────────────────────────────────┘  │
+                         └───┬──────────────┬──────────────┬────────┘
+                             │              │              │
+                 ┌───────────▼──┐   ┌───────▼──────┐   ┌───▼──────────┐
+                 │ PostgreSQL 16│   │  Redis 7     │   │  S3 (R2)     │
+                 │  RLS per     │   │ queues·locks │   │ receipts     │
+                 │  tenant      │   │ idempotency  │   │ exports      │
+                 └──────────────┘   └───────┬──────┘   └──────────────┘
+                                            │
+                         ┌──────────────────▼───────────────────────┐
+                         │  apps/worker  (BullMQ)                   │
+                         │  reminder-scheduler · message-sender ·   │
+                         │  webhook-processor · reconciler ·        │
+                         │  receipt-renderer · exporter · digest    │
+                         └───┬─────────────────────────┬────────────┘
+                             │                         │
+                  ┌──────────▼─────────┐   ┌───────────▼────────────┐
+                  │ PaymentProvider    │   │ MessagingProvider      │
+                  │ port               │   │ port                   │
+                  │ → CinetPay adapter │   │ → WhatsApp Cloud API   │
+                  │ → Flutterwave      │   │ → SMS aggregator       │
+                  │ → Manual/offline   │   │ → Console (dev)        │
+                  └────────────────────┘   └────────────────────────┘
+                             ▲
+                             │ signed webhooks (public endpoint,
+                             │ signature-verified, replay-protected)
+                    aggregator callbacks
+</code></pre>
+<h3>Monorepo layout</h3>
+<pre><code>fineduc/
+├─ apps/
+│  ├─ api/          NestJS HTTP API                 ← build first
+│  ├─ worker/       BullMQ processors               ← build first
+│  ├─ dashboard/    Next.js admin &amp; director UI     ← build second
+│  ├─ pay/          Next.js public payment page     ← build second
+│  └─ web/          Next.js marketing landing       ← build last
+├─ packages/
+│  ├─ domain/       pure business logic, zero I/O   ← the heart
+│  ├─ db/           Prisma schema, migrations, seed
+│  ├─ contracts/    Zod schemas + generated OpenAPI types (shared by api &amp; clients)
+│  ├─ providers/    payment + messaging ports and adapters
+│  ├─ money/        Money value object, currency table, formatting
+│  ├─ config/       typed env loading (Zod), fail-fast at boot
+│  └─ ui/           shared React components + design tokens
+├─ docs/            ADRs, runbooks, provider notes
+└─ infra/           Docker Compose (dev), deployment config
+</code></pre>
+<p><strong>Dependency rule, enforced by <code>eslint-plugin-boundaries</code> in CI:</strong>
+<code>domain</code> depends on nothing. <code>db</code>, <code>providers</code> may depend on <code>domain</code>, <code>money</code>, and <code>config</code>.
+<code>ui</code> and the client apps may depend on <code>money</code> for <strong>display only</strong> — formatting lives in
+<code>packages/money</code> and is never reimplemented elsewhere (AGENTS.md rule #1).
+<code>api</code>/<code>worker</code> depend on all packages. Apps never import from each other.
+<strong>Nothing</strong> imports from <code>apps/*</code>.</p>
+<h2>4. Multi-tenancy</h2>
+<p><strong>Model:</strong> shared database, shared schema, <code>tenant_id</code> on every business table, isolated by
+<strong>Postgres Row-Level Security</strong>.</p>
+<p>Why not a schema or database per tenant: a few hundred schools, and cross-tenant analytics,
+migrations and support all become painful. RLS gives us the isolation without the operational cost.</p>
+<p><strong>How it works</strong></p>
+<ol>
+<li>Every business table carries <code>tenant_id uuid not null</code>.</li>
+<li>Every business table has <code>enable row level security</code> plus a policy:
+<code>using (tenant_id = current_setting(&#39;app.tenant_id&#39;)::uuid)</code>.</li>
+<li>The API runs as a role <strong>without</strong> <code>BYPASSRLS</code>. Migrations run as a separate role that has it.</li>
+<li>A <code>TenantContext</code> interceptor resolves the tenant from the JWT, opens a transaction, and
+issues <code>set local app.tenant_id = $1</code> before any query in the request.</li>
+<li><code>set local</code> is transaction-scoped, so a pooled connection can never leak a tenant into the
+next request.</li>
+<li>Jobs set the same variable from the job payload&#39;s <code>tenantId</code>. A job without a tenant is
+rejected at enqueue time.</li>
+</ol>
+<p><strong>Test that must exist and must never be deleted:</strong> create two tenants with data, authenticate
+as tenant A, attempt to read every table, and assert zero tenant-B rows. Run it in CI on every PR.</p>
+<p><strong>Sites (campuses).</strong> A tenant has one or more <code>sites</code>. Students, cash desks and users belong to
+a site. Site is a <em>filter</em>, not an isolation boundary — a group director sees all sites, a site
+bursar is scoped to one.</p>
+<h2>5. Money</h2>
+<p><code>packages/money</code> owns this and nothing else may reimplement it.</p>
+<pre><code class="language-ts">type Money = { amount: bigint; currency: CurrencyCode }   // amount is in MINOR units
+</code></pre>
+<ul>
+<li>Currencies carry an explicit exponent: <strong>XAF 0, XOF 0</strong>, NGN 2, GHS 2, USD 2, EUR 2.
+For XAF, one minor unit <em>is</em> one franc. There is no ×100.</li>
+<li>Stored as two columns: <code>amount_minor bigint</code> + <code>currency char(3)</code>. Never <code>numeric</code>, never
+<code>float</code>, never a single &quot;amount&quot; column whose unit you have to guess.</li>
+<li>All arithmetic goes through the <code>Money</code> type. Adding two different currencies throws.</li>
+<li><strong>Allocation and split use largest-remainder</strong> so the parts always re-sum to the whole. A
+three-way split of 100 000 XAF is 33 334 / 33 333 / 33 333 — never 33 333.33.</li>
+<li>Percentage discounts round <strong>half-up to the minor unit</strong>, computed on the base amount, and the
+resulting integer is what is stored — never the percentage re-applied later.</li>
+<li>Formatting is presentation-only, locale-aware (<code>fr-CM</code>: <code>45 000 FCFA</code>), and lives in <code>ui</code>.</li>
+<li>A tenant has <strong>one</strong> currency, set at creation and immutable. A payment arriving in another
+currency is rejected and flagged for manual handling, never auto-converted.</li>
+</ul>
+<h2>6. Data model</h2>
+<p>Core tables. <code>tenant_id</code>, <code>created_at</code>, <code>updated_at</code>, <code>created_by</code> are on everything and
+omitted below for readability.</p>
+<h3>Tenancy and identity</h3>
+<ul>
+<li><strong>tenant</strong> — school. <code>name, legal_name, country, currency, timezone, locale, plan, status, logo_url, settings jsonb</code></li>
+<li><strong>site</strong> — campus. <code>tenant_id, name, address, is_primary</code></li>
+<li><strong>user</strong> — staff. <code>email, phone, password_hash, name, status, totp_secret_encrypted, totp_enabled, last_login_at, failed_login_count, locked_until</code></li>
+<li><strong>membership</strong> — user ↔ tenant ↔ role, optionally scoped to a site.
+<code>user_id, tenant_id, site_id, role, status</code> — a user may serve several schools (a group&#39;s
+accountant). <strong>Unique on (user_id, tenant_id).</strong></li>
+<li><strong>refresh_token</strong> — <code>user_id, token_hash, family_id, expires_at, revoked_at, user_agent, ip</code>
+(rotation with reuse detection)</li>
+<li><strong>api_key</strong> — <code>tenant_id, name, key_hash, scopes[], last_used_at, expires_at</code> (Institution plan)</li>
+</ul>
+<h3>Academic structure</h3>
+<ul>
+<li><strong>academic_year</strong> — <code>name (&quot;2026-2027&quot;), starts_on, ends_on, status (draft|active|closed)</code>.
+<strong>Only one <code>active</code> per tenant</strong> (partial unique index).</li>
+<li><strong>term</strong> — <code>academic_year_id, name, starts_on, ends_on, sequence</code></li>
+<li><strong>grade_level</strong> — <code>name (&quot;6ème&quot;, &quot;CM2&quot;), sequence, cycle</code> (the class <em>level</em>)</li>
+<li><strong>class_group</strong> — <code>grade_level_id, academic_year_id, site_id, name (&quot;6ème A&quot;), capacity, head_teacher_name</code></li>
+</ul>
+<h3>People</h3>
+<ul>
+<li><strong>student</strong> — <code>matricule (unique per tenant), first_name, last_name, sex, born_on, photo_url, status (enrolled|left|graduated|suspended), notes</code></li>
+<li><strong>guardian</strong> — <code>first_name, last_name, phone_e164 (indexed), phone_alt_e164, email, relationship, preferred_channel (whatsapp|sms), preferred_locale, whatsapp_opt_in, opt_out_at, verification_status, bounce_count, quarantined_at</code></li>
+<li><strong>student_guardian</strong> — <code>student_id, guardian_id, is_primary, pays_fees, share_percent</code>
+(a fee split between two separated parents is a real case)</li>
+<li><strong>enrollment</strong> — <code>student_id, class_group_id, academic_year_id, enrolled_on, left_on, status, fee_schedule_id, carried_forward_balance_minor</code>
+<strong>The row that creates money owed.</strong> Unique on <code>(student_id, academic_year_id)</code>.</li>
+</ul>
+<h3>Fees and the ledger</h3>
+<ul>
+<li><strong>fee_schedule</strong> — <code>academic_year_id, grade_level_id, name, version, effective_from, status (draft|published|archived), total_minor</code> — <strong>versioned, never mutated after publish</strong></li>
+<li><strong>fee_item</strong> — <code>fee_schedule_id, code, label, category (tuition|registration|exam|canteen| transport|uniform|boarding|other), amount_minor, is_mandatory, is_recurring, sequence</code></li>
+<li><strong>instalment_plan</strong> — <code>fee_schedule_id, name, instalment_count</code></li>
+<li><strong>instalment_template</strong> — <code>instalment_plan_id, sequence, label (&quot;1ère tranche&quot;), due_offset_days | due_on, percent_bp | amount_minor</code></li>
+<li><strong>invoice</strong> — one per enrollment per academic year. <code>enrollment_id, number, issued_on, total_minor, discount_minor, net_minor, paid_minor, balance_minor, status</code>
+<em>(<code>paid_minor</code>/<code>balance_minor</code> are <strong>maintained projections</strong>, recomputed inside the same
+transaction as every ledger write and verified nightly — never edited by hand.)</em></li>
+<li><strong>invoice_line</strong> — <code>invoice_id, fee_item_id, label, amount_minor, quantity</code></li>
+<li><strong>instalment</strong> — <code>invoice_id, sequence, label, due_on (DATE, tenant timezone), amount_minor, allocated_minor, status (pending|partial|paid|overdue|waived|cancelled)</code>
+<strong>The unit reminders and payments hang off.</strong></li>
+<li><strong>discount</strong> — <code>invoice_id | invoice_line_id, type (sibling|staff|merit|hardship|commercial), method (percent|fixed), value, amount_minor, reason, granted_by, approved_by, granted_at</code></li>
+<li><strong>adjustment</strong> — <code>invoice_id, type (credit|debit), amount_minor, reason_code, note, created_by, approved_by</code> — how a mid-year fee change or a correction is recorded</li>
+<li><strong>student_ledger_entry</strong> — <strong>append-only.</strong> <code>student_id, invoice_id, instalment_id, entry_type (charge|payment|discount|adjustment|refund|reversal|carry_forward), amount_minor (signed), balance_after_minor, source_type, source_id, occurred_on, memo</code>
+<em>The audit-grade truth of a student&#39;s account. Nothing here is ever updated or deleted.</em></li>
+</ul>
+<h3>Payments</h3>
+<ul>
+<li><strong>payment</strong> — <code>student_id, invoice_id, method (mobile_money|cash|bank_transfer|cheque| card|waiver), amount_minor, currency, status (pending|processing|succeeded|failed| cancelled|expired|refunded|partially_refunded), provider, provider_ref, provider_fee_minor, fee_borne_by (payer|school), payer_phone_e164, payer_name, idempotency_key (unique per tenant), cash_session_id, initiated_by, received_at, reconciled_at, raw_provider_payload jsonb</code></li>
+<li><strong>payment_allocation</strong> — <code>payment_id, instalment_id, amount_minor</code> — how one payment is spread
+across instalments. A partial payment produces one row; a large payment produces several.</li>
+<li><strong>payment_link</strong> — <code>student_id, invoice_id, instalment_id (nullable → &quot;pay anything&quot;), token (unguessable, 32 bytes), suggested_amount_minor, min_amount_minor, expires_at, used_at, created_by</code></li>
+<li><strong>receipt</strong> — <code>payment_id, number (gapless per tenant per year), issued_at, pdf_url, sent_at, sent_channel</code> — <strong>immutable</strong>; a correction issues a credit note, not an edit</li>
+<li><strong>refund</strong> — <code>payment_id, amount_minor, reason_code, note, status, requested_by, approved_by, provider_ref, processed_at</code></li>
+<li><strong>provider_event</strong> — every inbound webhook, stored raw before processing.
+<code>provider, event_id (unique), event_type, signature_valid, payload jsonb, received_at, processed_at, processing_error, attempts</code> — <strong>the replay log; also our idempotency guard</strong></li>
+</ul>
+<h3>Cash control</h3>
+<ul>
+<li><strong>cash_desk</strong> — <code>site_id, name, is_active</code></li>
+<li><strong>cash_session</strong> — <code>cash_desk_id, cashier_user_id, opened_at, opening_float_minor, closed_at, declared_close_minor, expected_close_minor, variance_minor, variance_reason, status (open|closed|reconciled|flagged), closed_by, reconciled_by</code>
+<strong>Partial unique index: one <code>open</code> session per desk.</strong></li>
+<li><strong>cash_movement</strong> — <code>cash_session_id, type (payment|float_in|float_out|deposit_to_bank| correction), amount_minor (signed), reference, note, created_by</code> — append-only</li>
+</ul>
+<h3>Messaging</h3>
+<ul>
+<li><strong>message_template</strong> — <code>code, channel, locale, subject, body, variables[], whatsapp_template_name, whatsapp_template_status, is_active</code> — WhatsApp templates need Meta pre-approval, so the
+approval status lives here</li>
+<li><strong>reminder_rule</strong> — <code>tenant_id, name, offset_days (signed; −7 = seven days before due), channel, template_code, escalation_level, is_active, applies_to (all|class|status)</code></li>
+<li><strong>reminder_schedule</strong> — materialised intent. <code>instalment_id, reminder_rule_id, guardian_id, scheduled_for (timestamptz, computed in tenant tz), status (scheduled|sent|skipped| cancelled|failed), skip_reason, message_id</code> — <strong>unique on (instalment_id, rule_id, guardian_id)</strong></li>
+<li><strong>message</strong> — <code>guardian_id, student_id, channel, provider, to_phone_e164, template_code, locale, body_rendered, status (queued|sent|delivered|read|failed|undeliverable), provider_message_id, error_code, cost_minor, sent_at, delivered_at, read_at</code></li>
+<li><strong>message_credit_ledger</strong> — append-only wallet. <code>tenant_id, entry_type (topup|debit| refund|adjustment), amount_minor, balance_after_minor, message_id, note</code></li>
+</ul>
+<h3>Platform</h3>
+<ul>
+<li><strong>subscription</strong> — <code>tenant_id, plan, billing_period, student_cap, price_minor, current_period_start, current_period_end, status</code></li>
+<li><strong>audit_log</strong> — <strong>append-only, no delete grant.</strong> <code>tenant_id, actor_user_id, actor_role, action, entity_type, entity_id, before jsonb, after jsonb, ip, user_agent, request_id, occurred_at</code></li>
+<li><strong>outbox</strong> — transactional outbox. <code>aggregate_type, aggregate_id, event_type, payload jsonb, published_at, attempts</code> — a domain event is written in the <em>same transaction</em> as its state
+change, then published to the queue by a poller. This is how we avoid &quot;payment saved but
+receipt never sent&quot;.</li>
+</ul>
+<h3>Indexes that matter</h3>
+<pre><code class="language-sql">create unique index on student (tenant_id, matricule);
+create index     on guardian (tenant_id, phone_e164);
+create index     on instalment (tenant_id, due_on, status) where status in (&#39;pending&#39;,&#39;partial&#39;,&#39;overdue&#39;);
+create index     on payment (tenant_id, received_at desc);
+create unique index on payment (tenant_id, idempotency_key);
+create unique index on provider_event (provider, event_id);
+create unique index on cash_session (cash_desk_id) where status = &#39;open&#39;;
+create unique index on academic_year (tenant_id) where status = &#39;active&#39;;
+create index     on student_ledger_entry (tenant_id, student_id, occurred_on desc);
+create index     on reminder_schedule (status, scheduled_for) where status = &#39;scheduled&#39;;
+create index     on audit_log (tenant_id, entity_type, entity_id, occurred_at desc);
+</code></pre>
+<h2>7. Modules</h2>
+<p>Each is a NestJS module with a public service interface. Cross-module calls go through that
+interface only — never into another module&#39;s repository.</p>
+<table>
+<thead>
+<tr>
+<th>Module</th>
+<th>Owns</th>
+<th>Key operations</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>identity</code></td>
+<td>user, membership, refresh_token, api_key</td>
+<td>login, refresh, 2FA enrol/verify, invite, role change, password reset</td>
+</tr>
+<tr>
+<td><code>tenancy</code></td>
+<td>tenant, site, subscription, settings</td>
+<td>onboard school, manage sites, plan limits, feature flags</td>
+</tr>
+<tr>
+<td><code>academics</code></td>
+<td>academic_year, term, grade_level, class_group</td>
+<td>open/close a year, promote a cohort</td>
+</tr>
+<tr>
+<td><code>students</code></td>
+<td>student, guardian, student_guardian, enrollment</td>
+<td>enrol, re-enrol, transfer, withdraw, attach guardian, merge duplicates</td>
+</tr>
+<tr>
+<td><code>billing</code></td>
+<td>fee_schedule, fee_item, instalment_plan, invoice, instalment, discount, adjustment, student_ledger_entry</td>
+<td>publish a schedule, <strong>generate an invoice + instalments on enrolment</strong>, apply a discount, post an adjustment, compute a balance</td>
+</tr>
+<tr>
+<td><code>payments</code></td>
+<td>payment, payment_allocation, payment_link, receipt, refund, provider_event</td>
+<td>initiate mobile money, record cash, <strong>process a webhook</strong>, allocate, issue a receipt, refund, reconcile</td>
+</tr>
+<tr>
+<td><code>cashbox</code></td>
+<td>cash_desk, cash_session, cash_movement</td>
+<td>open, take cash, close with a count, reconcile, daily report</td>
+</tr>
+<tr>
+<td><code>messaging</code></td>
+<td>message_template, reminder_rule, reminder_schedule, message, message_credit_ledger</td>
+<td>schedule reminders, render, send, track delivery, meter credits, honour opt-out</td>
+</tr>
+<tr>
+<td><code>analytics</code></td>
+<td>read-only projections</td>
+<td>director dashboard, arrears ageing, recovery rate, method mix, reminder effectiveness</td>
+</tr>
+<tr>
+<td><code>audit</code></td>
+<td>audit_log</td>
+<td>write (via interceptor), query, export</td>
+</tr>
+<tr>
+<td><code>platform</code></td>
+<td>health, config, jobs admin, provider status</td>
+<td>ops surface</td>
+</tr>
+</tbody></table>
+<h2>8. Critical flows</h2>
+<h3>8.1 Enrolment creates the money owed</h3>
+<pre><code>POST /enrollments  { studentId, classGroupId, academicYearId, feeScheduleId?, planId? }
+  ↓ single transaction
+  1. validate: year is active, student not already enrolled that year, schedule is published
+  2. create enrollment
+  3. resolve fee_schedule (explicit, or the published one for that grade_level + year)
+  4. create invoice + invoice_lines from fee_items
+  5. apply automatic discounts (sibling rule) → discount rows, recompute net
+  6. expand instalment_templates → instalment rows
+       due_on = a DATE resolved in the TENANT timezone
+       amounts split by largest-remainder so they re-sum to net exactly
+  7. if carried_forward_balance &gt; 0 → a `carry_forward` ledger entry + an extra instalment
+  8. write student_ledger_entry (type=charge) per line
+  9. write outbox event `enrollment.created`
+  ↓ commit
+  worker: schedule reminders for every instalment; send a welcome message to the guardian
+</code></pre>
+<p><strong>Invariant checked in the same transaction:</strong> <code>sum(instalment.amount) == invoice.net_minor</code>.</p>
+<h3>8.2 Mobile money payment — the aggregator path</h3>
+<pre><code>Guardian taps the link in the WhatsApp reminder
+  → GET /pay/:token           (public, no auth, rate-limited)
+      resolve student + balance + suggested amount. Token is single-purpose and expiring.
+  → POST /pay/:token/initiate { amountMinor, payerPhone, operator }
+      Idempotency-Key header REQUIRED (client-generated UUID, replayed on retry)
+      1. re-validate amount against the LIVE balance (the parent may have paid meanwhile)
+      2. create payment(status=pending, provider_ref=null, idempotency_key)
+      3. call PaymentProvider.initiate() → checkout URL / USSD push
+      4. store provider_ref
+      5. return the redirect
+  → parent authorises on their phone (MoMo / Orange / Wave PIN prompt)
+
+  ── the browser redirect is a HINT. It is never trusted. ──
+
+  → POST /webhooks/payments/:provider     (public, signature-verified)
+      1. verify HMAC signature; reject and alert on failure
+      2. INSERT INTO provider_event (unique on provider+event_id)
+         → conflict means we already have it → 200 OK, stop. This is the idempotency guard.
+      3. enqueue webhook-processor job, return 200 within ~200 ms
+         (never do business work inside the webhook request)
+
+  worker: webhook-processor
+      1. SELECT ... FOR UPDATE on the payment
+      2. state machine: pending → succeeded | failed | expired. Illegal transitions are logged
+         and dropped, never applied.
+      3. on success, in ONE transaction:
+           payment.status = succeeded, received_at, provider_fee_minor
+           allocate across instalments (oldest due first, or the pinned instalment)
+           → payment_allocation rows
+           → instalment.allocated_minor, status
+           → student_ledger_entry(type=payment, signed, balance_after)
+           → invoice.paid_minor / balance_minor recomputed
+           → overpayment becomes a credit adjustment
+           → CANCEL every scheduled reminder for the now-settled instalments
+           → outbox: payment.succeeded
+      4. commit
+      5. from the outbox: render the receipt PDF → S3 → send it to the guardian on the
+         channel they used
+</code></pre>
+<h3>8.3 Cash payment at the desk</h3>
+<pre><code>Cashier must have an OPEN cash_session, else the endpoint 409s.
+POST /payments/cash { studentId, amountMinor, instalmentId?, payerName }
+   Idempotency-Key REQUIRED — the cashier will double-tap on a slow connection
+   one transaction: payment(method=cash, status=succeeded, cash_session_id)
+                  + allocation + ledger entries + cash_movement + reminder cancellation
+   → receipt number assigned GAPLESSLY from a per-tenant-per-year sequence
+     (a dedicated counter row locked FOR UPDATE — a Postgres sequence has gaps on rollback,
+      and gapless receipt numbering is an audit requirement)
+   → print/share the receipt; optionally send it to the guardian
+</code></pre>
+<h3>8.4 Closing the desk — the anti-leak control</h3>
+<pre><code>POST /cash-sessions/:id/close { declaredMinor, note }
+  expected = opening_float + Σ cash_movement(session)
+  variance = declared − expected
+  variance != 0  → variance_reason is REQUIRED, session status = flagged, director notified
+  variance == 0  → status = closed
+  the session becomes immutable; any later correction is a NEW movement in a NEW session,
+  reason-coded and audited
+</code></pre>
+<h3>8.5 Reminders — schedule, then decide at send time</h3>
+<pre><code>Nightly (per tenant, at 02:00 tenant time) — reminder-scheduler
+  for each unpaid instalment in the horizon (due_on within −60 .. +90 days):
+    for each active reminder_rule:
+      for each guardian with pays_fees = true and not opted out and not quarantined:
+        upsert reminder_schedule(instalment, rule, guardian)
+          scheduled_for = due_on + offset_days, at the tenant&#39;s send hour, in TENANT TZ
+        (unique constraint makes the whole job safely re-runnable)
+
+Every 15 min — message-sender picks up rows where scheduled_for &lt;= now and status = scheduled
+  AT SEND TIME, and only at send time, check:
+    ✗ instalment already paid or waived      → skip (reason: settled)   ← the #1 trust bug
+    ✗ guardian opted out / quarantined       → skip
+    ✗ outside tenant quiet hours (default 07:00–20:00 tenant tz) → defer
+    ✗ guardian already messaged N times today (default 2) → defer
+    ✗ tenant daily message cap reached       → defer + warn the bursar
+    ✗ message credit balance == 0            → skip + alert    (never send on credit)
+  then:
+    render the template (locale, variables, school signature)
+    mint a payment_link token
+    MessagingProvider.send() — WhatsApp first; on undeliverable, fall back to SMS
+    debit message_credit_ledger in the SAME transaction as the message row
+    store provider_message_id for delivery callbacks
+</code></pre>
+<p><strong>Hard limits enforced in the sender, not the scheduler</strong> — a scheduler bug must not be able to
+bypass them.</p>
+<h3>8.6 Reconciliation — the safety net</h3>
+<pre><code>Every 30 min — reconciler
+  payments in (pending, processing) older than 15 min
+    → PaymentProvider.getStatus(provider_ref)
+    → apply the same state machine as the webhook processor (shared code path)
+  payments pending &gt; 2 h → expire, cancel, notify the bursar
+  daily 03:00 — integrity sweep, per tenant:
+    Σ payment_allocation(instalment)      == instalment.allocated_minor
+    Σ instalment.amount                   == invoice.net_minor
+    Σ ledger entries(student)             == invoice.balance_minor
+    Σ cash_movement(closed session)       == session.expected_close_minor
+    latest ledger balance_after           == computed running balance
+  any mismatch → the tenant is flagged, an incident is opened, the director is NOT shown a
+  number we cannot prove. Silence is worse than an honest &quot;reconciling&quot;.
+</code></pre>
+<h2>9. Provider ports</h2>
+<p>No provider name appears in <code>packages/domain</code> or in any module service. Ever.</p>
+<pre><code class="language-ts">// packages/providers/payment/port.ts
+export interface PaymentProvider {
+  readonly name: string
+  readonly supportedMethods: PaymentMethod[]
+  initiate(req: InitiatePaymentRequest): Promise&lt;InitiatePaymentResult&gt;
+  getStatus(providerRef: string): Promise&lt;ProviderPaymentStatus&gt;
+  verifyWebhook(rawBody: Buffer, headers: Record&lt;string, string&gt;): WebhookVerification
+  parseWebhook(payload: unknown): NormalizedPaymentEvent
+  refund(providerRef: string, amount: Money, reason: string): Promise&lt;RefundResult&gt;
+}
+
+// packages/providers/messaging/port.ts
+export interface MessagingProvider {
+  readonly name: string
+  readonly channel: &#39;whatsapp&#39; | &#39;sms&#39;
+  send(msg: OutboundMessage): Promise&lt;SendResult&gt;       // must accept an idempotencyKey
+  parseStatusWebhook(payload: unknown): DeliveryStatusEvent[]
+  estimateCost(msg: OutboundMessage): Money
+}
+</code></pre>
+<p><strong>Adapters, v1</strong></p>
+<ul>
+<li>Payment: <strong>CinetPay</strong> (primary — MTN, Orange, Moov, Wave, card across Cameroon, CIV,
+Senegal, Burkina, Mali, Togo, Benin), <strong>Flutterwave</strong> (secondary — anglophone reach),
+<code>ManualProvider</code> (cash/transfer, no network), <code>FakeProvider</code> (deterministic, for tests).</li>
+<li>Messaging: <strong>WhatsApp Cloud API</strong> (Meta, direct — cheapest and richest),
+an <strong>SMS aggregator</strong> (Africa&#39;s Talking / a local one per country),
+<code>ConsoleProvider</code> (dev), <code>FakeProvider</code> (tests).</li>
+</ul>
+<p><strong>Adapter rules</strong></p>
+<ul>
+<li>Every adapter is fully exercised by contract tests written against the <em>port</em>, so a new
+provider is proven by making the same suite pass.</li>
+<li>Adapters never write to the database. They translate, call, and return normalised results.</li>
+<li>Every outbound call has a timeout (10 s), a retry policy (3, exponential + jitter, only on
+5xx/network), and a circuit breaker.</li>
+<li>Provider credentials come from env only, are never logged, and are validated at boot.</li>
+<li><strong>Webhook endpoints are public and therefore hostile territory</strong>: verify the signature before
+parsing, use a raw-body parser, enforce a timestamp window against replay, rate-limit by IP,
+and store the raw event before doing anything with it.</li>
+</ul>
+<h2>10. Security</h2>
+<p><strong>Tenant isolation</strong> — Postgres RLS as described in §4. The application <code>where</code> clause is a
+convenience; the policy is the guarantee. The API database role must not have <code>BYPASSRLS</code>.</p>
+<p><strong>Authentication</strong> — argon2id (memory 64 MB, iterations 3). Access JWT 15 min, refresh 30 d,
+rotated on every use with <strong>reuse detection</strong>: a replayed refresh token revokes the whole token
+family and alerts. TOTP 2FA mandatory for Director and Bursar, optional elsewhere. Account
+lockout after 5 failures, exponential backoff, unlock by the director or by email.</p>
+<p><strong>Authorisation</strong> — RBAC + explicit permission checks, deny by default.</p>
+<table>
+<thead>
+<tr>
+<th>Capability</th>
+<th align="center">Director</th>
+<th align="center">Bursar</th>
+<th align="center">Cashier</th>
+<th align="center">Secretary</th>
+<th align="center">Auditor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>View dashboard &amp; reports</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+<td align="center">✖</td>
+<td align="center">✖</td>
+<td align="center">✅ (read)</td>
+</tr>
+<tr>
+<td>Enrol / edit students</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+<td align="center">✖</td>
+<td align="center">✅</td>
+<td align="center">✖</td>
+</tr>
+<tr>
+<td>Publish a fee schedule</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+<td align="center">✖</td>
+<td align="center">✖</td>
+<td align="center">✖</td>
+</tr>
+<tr>
+<td>Grant a discount / scholarship</td>
+<td align="center">✅</td>
+<td align="center">⚠ needs approval</td>
+<td align="center">✖</td>
+<td align="center">✖</td>
+<td align="center">✖</td>
+</tr>
+<tr>
+<td>Take a cash payment</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+<td align="center">✖</td>
+<td align="center">✖</td>
+</tr>
+<tr>
+<td>Close a cash session</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+<td align="center">✅ (own only)</td>
+<td align="center">✖</td>
+<td align="center">✖</td>
+</tr>
+<tr>
+<td>Reconcile a flagged session</td>
+<td align="center">✅</td>
+<td align="center">✖</td>
+<td align="center">✖</td>
+<td align="center">✖</td>
+<td align="center">✖</td>
+</tr>
+<tr>
+<td>Refund / reverse a payment</td>
+<td align="center">⚠ dual approval</td>
+<td align="center">⚠ requests</td>
+<td align="center">✖</td>
+<td align="center">✖</td>
+<td align="center">✖</td>
+</tr>
+<tr>
+<td>Send a manual reminder</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+<td align="center">✖</td>
+<td align="center">✅</td>
+<td align="center">✖</td>
+</tr>
+<tr>
+<td>Change reminder rules / templates</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+<td align="center">✖</td>
+<td align="center">✖</td>
+<td align="center">✖</td>
+</tr>
+<tr>
+<td>Manage users &amp; roles</td>
+<td align="center">✅</td>
+<td align="center">✖</td>
+<td align="center">✖</td>
+<td align="center">✖</td>
+<td align="center">✖</td>
+</tr>
+<tr>
+<td>Export all data</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+<td align="center">✖</td>
+<td align="center">✖</td>
+<td align="center">✅</td>
+</tr>
+<tr>
+<td>View the audit log</td>
+<td align="center">✅</td>
+<td align="center">✅ (own tenant)</td>
+<td align="center">✖</td>
+<td align="center">✖</td>
+<td align="center">✅</td>
+</tr>
+</tbody></table>
+<p><strong>Four-eyes controls</strong> — refunds, reversals, discounts above a tenant-set threshold, and cash
+variance reconciliation all require a second, different user. Enforced in the service layer with
+an <code>approval</code> record, not in the UI.</p>
+<p><strong>Audit</strong> — an interceptor writes an <code>audit_log</code> row for every mutating request: actor, role,
+action, entity, before/after diff, IP, user agent, request id. The table has <code>INSERT</code> and
+<code>SELECT</code> grants only; no <code>UPDATE</code>, no <code>DELETE</code>, for any application role. Retention 7 years.</p>
+<p><strong>Data protection</strong> — TLS 1.3 everywhere, HSTS. At rest: managed Postgres encryption plus
+application-level AES-256-GCM on TOTP secrets and provider credentials. Student photos in
+private S3 buckets reached only by short-lived signed URLs. PII (phone, name, matricule)
+redacted from logs by a Pino serialiser — enforced by a test that greps a log fixture for
+a known phone number.</p>
+<p><strong>Input &amp; transport</strong> — Zod validation at every boundary, <code>helmet</code>, a strict CORS allowlist,
+a 1 MB body cap, <code>express-rate-limit</code> on Redis (auth 5/min/IP, payment initiation 10/min/token,
+public payment page 60/min/IP), and parameterised queries only.</p>
+<p><strong>Payment link tokens</strong> — 32 random bytes, base64url, single student, expiring (default 30 days),
+revoked on payment, rate-limited, and carrying <strong>no</strong> PII in the URL. The page shows a first
+name and a masked matricule, never a full identity.</p>
+<p><strong>Secrets</strong> — env only, loaded and validated by <code>packages/config</code> at boot, fail-fast if a
+required var is missing. <code>.env</code> is git-ignored; <code>.env.example</code> is committed with placeholders.
+No secret ever reaches a log, an error message, or a Sentry payload.</p>
+<p><strong>Compliance posture</strong> — Fineduc is <strong>not</strong> a payment institution: funds settle from the
+aggregator directly to the school&#39;s own account and never touch a Fineduc account. GDPR-shaped
+data handling as the baseline (it is stricter than most local regimes and travels well):
+purpose limitation, a documented retention schedule, export and erasure on request, and a
+DPA with the school. Guardians&#39; phone numbers are processed on the school&#39;s legitimate interest
+in collecting fees, and opt-out is always honoured for marketing-shaped messages while
+transactional receipts remain.</p>
+<h2>11. Background jobs</h2>
+<table>
+<thead>
+<tr>
+<th>Queue</th>
+<th>Trigger</th>
+<th>Concurrency</th>
+<th>Retries</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>webhook-processor</code></td>
+<td>on webhook receipt</td>
+<td>10</td>
+<td>5, exp backoff</td>
+<td>Idempotent by <code>provider_event.event_id</code>. DLQ alerts immediately.</td>
+</tr>
+<tr>
+<td><code>reminder-scheduler</code></td>
+<td>cron, 02:00 tenant tz</td>
+<td>1 per tenant</td>
+<td>3</td>
+<td>Idempotent via the unique constraint; safe to re-run any time.</td>
+</tr>
+<tr>
+<td><code>message-sender</code></td>
+<td>cron, every 15 min</td>
+<td>5</td>
+<td>3</td>
+<td>All the safety checks live here.</td>
+</tr>
+<tr>
+<td><code>message-status</code></td>
+<td>on delivery webhook</td>
+<td>10</td>
+<td>3</td>
+<td>Updates delivery/read state, drives fallback and quarantine.</td>
+</tr>
+<tr>
+<td><code>reconciler</code></td>
+<td>cron, every 30 min</td>
+<td>1</td>
+<td>3</td>
+<td>Re-queries non-final payments. Shares the webhook state machine.</td>
+</tr>
+<tr>
+<td><code>integrity-sweep</code></td>
+<td>cron, 03:00 daily</td>
+<td>1</td>
+<td>1</td>
+<td>The invariant checks in §8.6. Pages on mismatch.</td>
+</tr>
+<tr>
+<td><code>receipt-renderer</code></td>
+<td>outbox event</td>
+<td>5</td>
+<td>5</td>
+<td>PDF → S3 → deliver.</td>
+</tr>
+<tr>
+<td><code>exporter</code></td>
+<td>on request</td>
+<td>2</td>
+<td>2</td>
+<td>Large Excel/PDF exports, delivered as a signed URL.</td>
+</tr>
+<tr>
+<td><code>director-digest</code></td>
+<td>cron, 07:00 tenant tz</td>
+<td>1 per tenant</td>
+<td>2</td>
+<td>The daily WhatsApp summary — the habit-forming feature.</td>
+</tr>
+<tr>
+<td><code>outbox-publisher</code></td>
+<td>every 5 s</td>
+<td>1</td>
+<td>∞</td>
+<td>Polls the outbox, publishes to queues, marks published.</td>
+</tr>
+</tbody></table>
+<p>Every job payload carries <code>tenantId</code>, <code>requestId</code> and <code>attempt</code>. Every job sets
+<code>app.tenant_id</code> before touching the database. A job that cannot resolve a tenant fails loudly.</p>
+<h2>12. API surface</h2>
+<p>REST, <code>/api/v1</code>, JSON, Bearer JWT, OpenAPI-documented.</p>
+<pre><code>POST   /auth/login | /auth/refresh | /auth/logout | /auth/2fa/{enroll,verify}
+GET    /me
+
+GET    /students | POST /students | GET,PATCH /students/:id
+GET    /students/:id/ledger            ← the student file: charges, payments, balance
+GET    /students/:id/statement.pdf
+POST   /students/:id/guardians | DELETE /students/:id/guardians/:gid
+
+POST   /enrollments | POST /enrollments/:id/withdraw | POST /enrollments/bulk-promote
+
+GET,POST /fee-schedules | POST /fee-schedules/:id/publish
+GET,POST /instalment-plans
+
+GET    /invoices/:id | GET /invoices/:id/instalments
+POST   /invoices/:id/discounts | POST /invoices/:id/adjustments
+
+POST   /payments/cash                 ← Idempotency-Key required
+POST   /payments/manual               ← transfer / cheque
+GET    /payments | GET /payments/:id
+POST   /payments/:id/refund           ← dual approval
+GET    /payments/:id/receipt.pdf | POST /payments/:id/receipt/send
+
+POST   /payment-links | GET /payment-links/:id
+GET    /pay/:token                    ← PUBLIC, no auth
+POST   /pay/:token/initiate           ← PUBLIC, Idempotency-Key required
+POST   /webhooks/payments/:provider   ← PUBLIC, signature-verified
+POST   /webhooks/messages/:provider   ← PUBLIC, signature-verified
+
+POST   /cash-sessions | POST /cash-sessions/:id/close | POST /cash-sessions/:id/reconcile
+GET    /cash-sessions/:id/report.pdf
+
+GET,POST,PATCH /reminder-rules
+GET,POST,PATCH /message-templates
+POST   /reminders/send                ← manual: one guardian, a class, or a debtor filter
+GET    /messages                      ← the delivery log
+GET    /message-credits | POST /message-credits/topup
+
+GET    /dashboard/overview            ← the director screen, one call
+GET    /dashboard/arrears?groupBy=class|age|amount
+GET    /dashboard/collections?from&amp;to&amp;granularity
+GET    /dashboard/cash-status
+GET    /reports/:type/export?format=xlsx|pdf
+
+GET    /audit-log
+GET,PATCH /settings | GET,POST /users | PATCH /users/:id/role
+GET    /health | /health/ready | /health/providers
+</code></pre>
+<p><strong>Conventions.</strong> Cursor pagination (<code>?cursor&amp;limit</code>, max 100). Errors are RFC 9457
+<code>application/problem+json</code> with a stable <code>type</code>, a <code>traceId</code> and, on validation failures, a
+field map. <code>Idempotency-Key</code> is mandatory on every money-moving POST and honoured for 24 h.
+Money crosses the wire as <code>{ &quot;amountMinor&quot;: &quot;45000&quot;, &quot;currency&quot;: &quot;XAF&quot; }</code> — a <strong>string</strong> for the
+integer, so no JavaScript client can silently lose precision. Timestamps are ISO 8601 UTC;
+<strong>due dates are plain <code>YYYY-MM-DD</code></strong> and must never be turned into a timestamp.</p>
+<h2>13. Dashboard</h2>
+<p>Next.js 15 App Router, server components for shell and static data, TanStack Query for live
+data, Tailwind + shadcn/ui, Recharts. Design tokens shared with the landing page via
+<code>packages/ui</code>.</p>
+<p><strong>Mobile-first is a hard requirement, not a nice-to-have.</strong> The director&#39;s primary device is a
+phone. Build every screen at 360 px first and let it grow.</p>
+<ul>
+<li><strong>Director home</strong> — collected today vs expected, recovery-rate gauge, arrears by class,
+cash-desk status, method mix, a 30-day collection sparkline. One API call, cached 30 s,
+auto-refresh 60 s.</li>
+<li><strong>Students</strong> — searchable list (name, matricule, phone), filters (class, status, balance),
+and the <strong>student file</strong>: identity, guardians, instalments with a status timeline, full
+ledger, message history, one-tap &quot;send a reminder&quot; and &quot;record a payment&quot;.</li>
+<li><strong>Arrears</strong> — the bursar&#39;s work queue. Filter, sort by amount or age, multi-select, bulk
+remind, export.</li>
+<li><strong>Cash desk</strong> — open/close, live session total, movement list, close-with-count flow with the
+variance shown before confirmation.</li>
+<li><strong>Payments</strong> — searchable, filterable, reconciliation status visible; a payment stuck in
+<code>pending</code> must be obvious and actionable.</li>
+<li><strong>Fees</strong> — schedule builder, instalment-plan editor with a live preview of the dates and
+amounts a student will actually get.</li>
+<li><strong>Reminders</strong> — rule ladder editor, template editor with a live preview and variable
+validation, delivery log, credit balance and burn rate.</li>
+<li><strong>Admin</strong> — users and roles, sites, academic years, settings, audit log.</li>
+</ul>
+<p><strong>Accessibility and reality:</strong> WCAG 2.1 AA, works at 200% zoom, every state (loading, empty,
+error, offline) designed. Optimistic UI is <strong>banned</strong> on money operations — the cashier must see
+the server&#39;s truth, not a hopeful local one.</p>
+<h2>14. Environments and deployment</h2>
+<table>
+<thead>
+<tr>
+<th>Env</th>
+<th>Purpose</th>
+<th>Data</th>
+<th>Providers</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>local</code></td>
+<td>Docker Compose: Postgres, Redis, MailHog</td>
+<td>seeded fake school</td>
+<td>Fake/Console adapters</td>
+</tr>
+<tr>
+<td><code>staging</code></td>
+<td>pre-production, full pipeline</td>
+<td>anonymised</td>
+<td>provider sandboxes</td>
+</tr>
+<tr>
+<td><code>production</code></td>
+<td>live schools</td>
+<td>real</td>
+<td>live credentials</td>
+</tr>
+</tbody></table>
+<p><strong>CI (GitHub Actions):</strong> typecheck → lint (incl. boundary rules) → unit → integration
+(Testcontainers Postgres) → migration check (up, then down, then up again on a copy of the
+staging schema) → build. A PR cannot merge red.</p>
+<p><strong>CD:</strong> staging on merge to <code>main</code>, production on a tagged release with a manual gate.
+Migrations run as a separate step <strong>before</strong> the new code is released, and every migration must
+be backward-compatible with the currently-running version (expand → migrate → contract).</p>
+<p><strong>Backups:</strong> managed Postgres PITR, 30-day retention, plus a nightly logical dump to a
+different provider. <strong>A restore is rehearsed monthly and the runbook lives in <code>docs/runbooks/</code>.</strong>
+An unrehearsed backup is not a backup.</p>
+<p><strong>Observability:</strong> Sentry for errors, OpenTelemetry traces (request → job → provider call, one
+trace), Pino JSON logs with <code>tenant_id</code> and <code>request_id</code> on every line.
+Alert, with a human on the other end, on: webhook DLQ depth &gt; 0 · reconciliation mismatch ·
+message send failure rate &gt; 5% · a tenant&#39;s message credits at zero · a cash session open</p>
+<blockquote>
+<p>14 h · p95 latency &gt; 1 s · any 5xx on a payment path.</p>
+</blockquote>
+<h2>15. Build order</h2>
+<p>Strictly backend-first. Nothing in a later phase starts before the phase above it is tested.</p>
+<ol>
+<li><strong>Foundation</strong> — monorepo, config, <code>money</code>, Prisma schema, migrations, RLS policies and the
+cross-tenant isolation test, seed script, health endpoints.</li>
+<li><strong>Identity &amp; tenancy</strong> — auth, 2FA, RBAC, memberships, tenant context interceptor, audit
+interceptor.</li>
+<li><strong>Academics &amp; students</strong> — years, classes, students, guardians, enrolment.</li>
+<li><strong>Billing</strong> — fee schedules, instalment plans, invoice + instalment generation, discounts,
+the student ledger. <em>This is the hardest and most important module. Over-test it.</em></li>
+<li><strong>Payments — cash first.</strong> Cash sessions, cash payments, allocation, receipts, closing and
+variance. A school is usable at this point with zero external providers.</li>
+<li><strong>Payments — mobile money.</strong> The <code>PaymentProvider</code> port, the CinetPay adapter, payment links,
+the public pay page, webhooks, the reconciler.</li>
+<li><strong>Messaging.</strong> The <code>MessagingProvider</code> port, templates, reminder rules, the scheduler, the
+sender with every safety check, the credit wallet, delivery tracking.</li>
+<li><strong>Analytics.</strong> Dashboard projections and exports.</li>
+<li><strong>Dashboard UI.</strong> Director home → students → arrears → cash → fees → reminders → admin.</li>
+<li><strong>Landing page.</strong> Framer-styled marketing site.</li>
+</ol>
+<h2>16. Hard questions</h2>
+<p><em>Technical answers to the questions in <a href="PRD.md#9-hard-questions">PRD.md §9</a>.</em></p>
+<h3>What will break?</h3>
+<ul>
+<li><strong>Balance projections drifting from the ledger.</strong> <code>invoice.paid_minor</code> is a cache; caches go
+stale. → It is only ever written inside the same transaction as the ledger entry, and the
+nightly integrity sweep recomputes and compares. A mismatch is an incident, not a warning.</li>
+<li><strong>Concurrent payments on the same instalment.</strong> Two cashiers, or a cashier and a webhook, at
+the same moment. → <code>SELECT ... FOR UPDATE</code> on the invoice row before any allocation. All
+allocation flows through <strong>one</strong> service method. There is no second code path.</li>
+<li><strong>Webhook floods and replays.</strong> → <code>provider_event</code> unique on <code>(provider, event_id)</code>; the
+endpoint stores raw and returns 200 in under ~200 ms; all work is queued.</li>
+<li><strong>Connection-pool tenant leakage.</strong> The single worst possible bug in this system. → <code>set local</code>
+inside a transaction, never <code>set</code>; the API role lacks <code>BYPASSRLS</code>; an automated cross-tenant
+test runs on every PR.</li>
+<li><strong>Receipt-number gaps.</strong> A Postgres sequence increments outside the transaction, so a rollback
+leaves a hole — and an auditor reads a hole as a deleted receipt. → A dedicated counter row per
+tenant per year, locked <code>FOR UPDATE</code>, incremented inside the transaction.</li>
+<li><strong>Timezone bugs on due dates.</strong> → <code>due_on</code> is a <code>DATE</code>, resolved and compared in tenant time.
+A lint rule bans <code>new Date()</code> in <code>packages/domain</code>; a clock is injected.</li>
+<li><strong><code>bigint</code> serialising to JSON.</strong> <code>JSON.stringify(1n)</code> throws; <code>Number(bigint)</code> loses precision
+above 2^53. → Money crosses the wire as a string, enforced by the Zod contract.</li>
+<li><strong>A stuck queue nobody notices.</strong> → DLQ depth is alerted, not merely dashboarded.</li>
+<li><strong>The aggregator changing its webhook payload without notice.</strong> → Store raw, parse
+defensively, and treat a parse failure as a retryable job with a page, so an event is never
+silently dropped.</li>
+<li><strong>Prisma&#39;s connection pool versus RLS.</strong> Prisma reuses connections aggressively. → Interactive
+transactions for every tenant-scoped request, and an integration test that hammers concurrent
+requests from two tenants and asserts zero bleed.</li>
+</ul>
+<h3>What edge cases are we missing?</h3>
+<p>Payment arriving after the academic year closed (accept it, post to the closed year with a
+reopen-audit entry, never silently drop) · guardian paying more than the total balance
+(overpayment → credit, surfaced, refundable) · a student withdrawing with a credit
+(refund flow, dual approval) · a fee schedule edited after invoices exist (blocked — publish a
+new version and post adjustments) · two guardians paying the same instalment simultaneously
+(row lock; the second becomes an overpayment/credit) · a webhook arriving for a payment we
+never created (log, alert, do <strong>not</strong> auto-create) · a guardian&#39;s phone number reassigned by the
+telco to a stranger (quarantine on bounces, re-verify) · a cashier deleted while holding an open
+session (block user deactivation while a session is open) · clock skew on the aggregator&#39;s
+timestamps (tolerate a window, do not reject) · a tenant changing timezone mid-year (freeze
+already-scheduled reminders, reschedule the rest) · daylight saving (none in our target
+countries, but the code must not assume it) · a leap-year due date on 29 February · an
+instalment amount of zero (a full scholarship — must not generate a reminder) · a student in two
+schools of the same group (two tenants or two enrolments — decided as: two enrolments, one
+tenant, per-site).</p>
+<h3>What is over-engineered?</h3>
+<p>Cut, on purpose: <strong>CQRS with separate read models</strong> (Postgres views and good indexes are enough
+at a few hundred schools) · <strong>an event-sourcing framework</strong> (append-only money tables plus an
+outbox give us the audit trail without the machinery) · <strong>Kubernetes</strong> (two containers and a
+managed Postgres) · <strong>a plugin architecture for providers</strong> (two interfaces and a factory) ·
+<strong>a generic rules engine for reminders</strong> (offset + channel + template covers every school we
+have met) · <strong>GraphQL</strong> (REST is fine and cacheable) · <strong>a service mesh, feature-flag SaaS, or a
+data warehouse</strong> (a boolean in <code>tenant.settings</code>; SQL on the primary; revisit at 100 schools) ·
+<strong>offline-first sync in the dashboard</strong> (huge complexity, and a wrong offline balance is worse
+than a spinner — a small, explicitly-queued offline cash mode is v1.1 at the earliest) ·
+<strong>building our own PDF layout engine</strong> · <strong>supporting more than one currency per tenant.</strong></p>
+
+        </div>
+      </section>
+    
+      <section id="section-4" class="doc-section page-break">
+        <div class="section-badge">Section 04</div>
+        <h1 class="section-title">Development Principles & Invariants (AGENTS.md)</h1>
+        <div class="content-body">
+          <h1>AGENTS.md — how to work inside Fineduc</h1>
+<blockquote>
+<p>The single instruction file for any coding agent in this repo.
+<code>CLAUDE.md</code> points here. Do not duplicate rules across the two.</p>
+</blockquote>
+<hr>
+<h2>Read this first, in this order</h2>
+<ol>
+<li><strong><a href="ARCHITECTURE-ESSENTIALS.md">ARCHITECTURE-ESSENTIALS.md</a></strong> — every task, always. It is short.</li>
+<li><strong><a href="PRD.md">PRD.md</a></strong> — when the task touches product behaviour, pricing, or scope.</li>
+<li><strong><a href="ARCHITECTURE.md">ARCHITECTURE.md</a></strong> — only the section you need. It is long; do not load
+it whole for a one-file change.</li>
+</ol>
+<p>If the three disagree, <strong>ARCHITECTURE.md wins on technical matters, PRD.md wins on product
+matters.</strong> Then fix the disagreement in the same PR.</p>
+<h2>What this product is</h2>
+<p>Fee collection for private African schools. A file per student, dated instalments, automatic
+WhatsApp/SMS reminders, mobile money through a third-party aggregator, and a real-time view for
+the director. <strong>It is not a school-management system</strong> — no grades, no attendance, no timetable.
+If a request drifts there, say so before building it.</p>
+<h2>Non-negotiables</h2>
+<p>These are correctness rules, not style preferences. Violating one is a bug even if the tests pass.</p>
+<ol>
+<li><strong>XAF and XOF have zero decimal places.</strong> Money is <code>bigint</code> in minor units with an explicit
+currency exponent, and all arithmetic goes through <code>packages/money</code>. If you write a float, a
+<code>toFixed(2)</code>, or a hard-coded <code>* 100</code> for money, you have introduced a defect.</li>
+<li><strong>Never update or delete a money row.</strong> Payments, allocations and ledger entries are
+append-only. A correction is a new, signed, reason-coded row.</li>
+<li><strong>Balances are projections.</strong> Write them only inside the same transaction as the ledger entry
+that changes them. Never patch one to &quot;fix&quot; a number.</li>
+<li><strong>Every tenant-scoped query runs inside a transaction that has issued
+<code>set local app.tenant_id</code>.</strong> Never <code>set</code> (session-scoped — it leaks across pooled
+connections). Never add <code>BYPASSRLS</code> to the application role.</li>
+<li><strong>Every money-moving POST and every message send requires an idempotency key.</strong></li>
+<li><strong>The payment webhook is the source of truth.</strong> Never mark a payment succeeded from a browser
+redirect or a client call.</li>
+<li><strong>Reminder eligibility is re-checked at send time against the live balance.</strong> Never send from
+a decision made at schedule time.</li>
+<li><strong>No provider name in <code>packages/domain</code> or in any module service.</strong> Go through the port.</li>
+<li><strong><code>due_on</code> is a <code>DATE</code> in the tenant&#39;s timezone.</strong> Never a timestamp, never UTC arithmetic on
+a due date.</li>
+<li><strong>Every mutating endpoint writes an audit row.</strong> If you add a mutation and no audit row
+appears, the feature is incomplete.</li>
+<li><strong>Never log a phone number, a full name, a matricule, a token, or a secret.</strong></li>
+<li><strong>Fineduc never holds funds.</strong> If a design implies money passing through our account, stop
+and flag it.</li>
+</ol>
+<h2>How to build a feature</h2>
+<p>Work in this order. Do not jump to the controller.</p>
+<ol>
+<li><strong>Contract first</strong> — a Zod schema in <code>packages/contracts</code>. Types are derived from it, never
+hand-written alongside it.</li>
+<li><strong>Domain logic</strong> — pure functions in <code>packages/domain</code>. No database, no HTTP, no clock, no
+randomness. Inject anything impure.</li>
+<li><strong>Persistence</strong> — Prisma schema change plus a migration. Money-critical writes use raw SQL
+with explicit locking.</li>
+<li><strong>Service</strong> — the module service orchestrates: transaction boundary, locks, ledger writes,
+outbox event.</li>
+<li><strong>HTTP</strong> — a thin NestJS controller. Validate, delegate, map the result. <strong>No business logic
+in a controller.</strong></li>
+<li><strong>Job</strong> — if there is asynchronous work, it is triggered by an outbox event, not by a direct
+<code>queue.add()</code> inside the transaction.</li>
+<li><strong>Tests</strong> — see below.</li>
+<li><strong>Docs</strong> — if you changed a rule, a model or a flow, update ARCHITECTURE.md <strong>and</strong> the
+corresponding line in ARCHITECTURE-ESSENTIALS.md in the same PR.</li>
+</ol>
+<h2>Tooling gotcha: never run a NestJS app through <code>tsx</code></h2>
+<p><code>tsx</code> (and any esbuild-based runner) does not implement TypeScript&#39;s
+<code>emitDecoratorMetadata</code>. NestJS&#39;s constructor DI reads that metadata to know
+which provider to inject for <code>private readonly foo: FooService</code> — without
+it, Nest boots and logs as if everything worked, but silently injects
+<code>undefined</code> for every constructor parameter, only crashing later when the
+handler actually calls a method on it. <code>packages/db/src/seed.ts</code> (a plain
+script, no DI) can use <code>tsx</code> freely; <code>apps/api</code> and <code>apps/worker</code> cannot.
+Always run them via <code>tsc</code> + <code>node dist/…</code> — <code>pnpm dev</code> uses <code>tsc-watch</code> for
+exactly this reason. Don&#39;t &quot;simplify&quot; it back to <code>tsx watch</code>.</p>
+<h2>Testing</h2>
+<p>Write these, in this priority order:</p>
+<ul>
+<li><strong>Domain unit tests</strong> — the money maths, allocation, largest-remainder splitting, instalment
+generation, discount application, the payment state machine. Fast, no I/O, exhaustive.</li>
+<li><strong>Integration tests</strong> against a real Postgres via Testcontainers — RLS isolation, transaction
+boundaries, locking, the gapless receipt counter under concurrency.</li>
+<li><strong>Provider contract tests</strong> written against the port. A new adapter is proven by making the
+existing suite pass. Never test against a live provider.</li>
+<li><strong>API tests</strong> with Supertest — authorisation matrix, idempotency replay, validation errors.</li>
+<li><strong>E2E</strong> with Playwright for exactly three journeys: enrol → invoice, cash payment → receipt →
+close the desk, reminder → payment link → webhook → settled.</li>
+</ul>
+<p><strong>Tests that must exist and must never be deleted:</strong></p>
+<ul>
+<li>Two tenants, authenticate as A, attempt to read every table, assert zero B rows.</li>
+<li>A webhook delivered twice produces exactly one settlement.</li>
+<li>A reminder is not sent for an instalment paid between scheduling and sending.</li>
+<li>Concurrent payments on one instalment do not over-allocate.</li>
+<li>100 000 XAF split three ways re-sums to exactly 100 000.</li>
+<li>A log fixture contains no phone number.</li>
+</ul>
+<p>Money paths are not &quot;covered enough&quot; at 80%. Get them to 100% of branches.</p>
+<h2>Code conventions</h2>
+<ul>
+<li>TypeScript strict, <code>noUncheckedIndexedAccess</code>, no <code>any</code>, no non-null <code>!</code> on anything that
+crosses a boundary. <code>unknown</code> + a Zod parse instead of a cast.</li>
+<li>Errors: typed domain errors in <code>domain</code>, mapped to RFC 9457 <code>problem+json</code> at the HTTP edge.
+Never throw a bare <code>Error</code> with a string for something a client must handle.</li>
+<li>Naming: <code>snake_case</code> in the database, <code>camelCase</code> in TypeScript, <code>kebab-case</code> for files.
+Money fields always end in <code>_minor</code> / <code>Minor</code>. Dates that are calendar dates end in <code>_on</code>;
+instants end in <code>_at</code>.</li>
+<li>No barrel <code>index.ts</code> re-export files except at a package root.</li>
+<li>Comments explain <strong>why</strong>, never what. Match the density of the surrounding code.</li>
+<li>Commits: conventional commits, imperative, scoped — <code>feat(billing): generate instalments on enrolment</code>.</li>
+<li>French is the product&#39;s first language, but <strong>code, identifiers, comments, commit messages and
+these docs are in English.</strong> Domain terms may carry the French in a comment
+(<code>// grille tarifaire</code>).</li>
+</ul>
+<h2>Things you must not do without asking</h2>
+<ul>
+<li>Add a dependency that is not already in the lockfile.</li>
+<li>Add a new third-party service, a new provider, or a new hosting component.</li>
+<li>Change the money representation, the tenancy strategy, or the append-only rule.</li>
+<li>Run a destructive migration, or any migration that is not backward-compatible with the
+currently-deployed code.</li>
+<li>Touch production data, or run anything against production credentials.</li>
+<li>Weaken or bypass a rate limit, a quiet-hours check, or a message cap &quot;to make a test pass&quot;.</li>
+<li>Send a real message or initiate a real payment from a dev or test environment. Use the Fake
+adapters.</li>
+<li>Widen v1 scope into grades, attendance, timetable, payroll, or a parent portal.</li>
+</ul>
+<h2>When something is ambiguous</h2>
+<p>Do the part that is unambiguous, then state the assumption or ask the one question that
+actually changes the work. Do not stop with nothing delivered, and do not silently pick a
+money-affecting default.</p>
+<h2>Before you say a task is done</h2>
+<ul>
+<li><input disabled="" type="checkbox"> <code>pnpm typecheck &amp;&amp; pnpm lint &amp;&amp; pnpm test</code> all pass</li>
+<li><input disabled="" type="checkbox"> New money path has domain tests <strong>and</strong> an integration test</li>
+<li><input disabled="" type="checkbox"> Mutation writes an audit row</li>
+<li><input disabled="" type="checkbox"> Money-moving endpoint accepts and honours <code>Idempotency-Key</code></li>
+<li><input disabled="" type="checkbox"> Tenant-scoped query runs under <code>set local app.tenant_id</code></li>
+<li><input disabled="" type="checkbox"> No phone number, name, token or secret in any log line</li>
+<li><input disabled="" type="checkbox"> Migration is backward-compatible and reversible</li>
+<li><input disabled="" type="checkbox"> <code>.env.example</code> updated if a new variable exists</li>
+<li><input disabled="" type="checkbox"> Docs updated if a rule, model or flow changed</li>
+<li><input disabled="" type="checkbox"> You have said plainly what you did <strong>not</strong> do</li>
+</ul>
+<h2>Hard questions — ask these of your own work</h2>
+<p>Before opening a PR, answer these three out loud in the PR description. They are the reason the
+rest of this repo&#39;s documentation exists.</p>
+<ul>
+<li><strong>What will break?</strong> Under concurrency, under a bad network, on a retry, at a tenant boundary,
+across a timezone, at the end of an academic year.</li>
+<li><strong>What edge cases am I missing?</strong> Partial payment · overpayment · a refund on a partially
+allocated payment · a zero-amount instalment from a full scholarship · a payment for a closed
+year · a guardian with children in several classes · a wrong or reassigned phone number.</li>
+<li><strong>What is over-engineered?</strong> If you added an abstraction with one implementation, a queue for
+work that is synchronous, a cache for a query that runs twice a day, or a configuration option
+no school has asked for — delete it before review.</li>
+</ul>
+<h2>Current state</h2>
+<p>Pre-code. The scaffold in <code>apps/</code> and <code>packages/</code> is intentionally empty or barely drafted —
+it exists to fix the shape of the project, not to be working software. Start at
+<strong><a href="ARCHITECTURE.md#15-build-order">ARCHITECTURE.md §15, Build order</a></strong>, phase 1. Do not start at
+phase 9 because the UI is more fun.</p>
+
+        </div>
+      </section>
+    
+
+</body>
+</html>

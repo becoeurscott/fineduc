@@ -1,0 +1,65 @@
+# Local development only. Matches ARCHITECTURE.md §14 `local` environment:
+# Postgres, Redis, and an S3-compatible store + mail catcher for the parts
+# of the stack phase 1 doesn't touch yet. Everything here is throwaway —
+# named volumes only, no backup, credentials are dev-only.
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: fineduc
+      POSTGRES_PASSWORD: fineduc
+      POSTGRES_DB: fineduc
+    ports:
+      - "5432:5432"
+    volumes:
+      - fineduc_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fineduc -d fineduc"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - fineduc_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # S3-compatible store standing in for Cloudflare R2 (receipts, exports,
+  # student photos — ARCHITECTURE.md §2). Not wired up until the payments
+  # phase; included now so `docker compose up` matches the target shape.
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: fineduc
+      MINIO_ROOT_PASSWORD: fineduc_dev_only
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - fineduc_minio_data:/data
+
+  # Catches staff-facing email (ARCHITECTURE.md §2 — guardians are reached
+  # by WhatsApp/SMS, never email; this is for internal notifications only).
+  mailhog:
+    image: mailhog/mailhog:latest
+    restart: unless-stopped
+    ports:
+      - "1025:1025" # SMTP
+      - "8025:8025" # Web UI
+
+volumes:
+  fineduc_postgres_data:
+  fineduc_redis_data:
+  fineduc_minio_data:

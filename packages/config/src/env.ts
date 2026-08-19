@@ -1,0 +1,154 @@
+/**
+ * Zod-validated environment, fail-fast at boot (AGENTS.md, ARCHITECTURE.md §10).
+ *
+ * Every variable an app or worker needs is declared here, once. A required
+ * value that is missing or malformed throws EnvValidationError immediately
+ * — never a `undefined` silently flowing into a provider client three
+ * layers down. Secrets are read from process.env only and are never logged
+ * (see `redactedKeys` at the bottom, used by the Pino logger config).
+ *
+ * Provider credentials (CinetPay, WhatsApp, SMS, S3) are OPTIONAL in
+ * development and test — the Fake/Console adapters need none of them — but
+ * REQUIRED in production, enforced by the superRefine below.
+ */
+import { z } from 'zod'
+import { EnvValidationError } from './errors.js'
+
+const nonEmpty = (label: string) => z.string().min(1, `${label} must not be empty`)
+
+const EnvSchema = z
+  .object({
+    NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+    PORT: z.coerce.number().int().positive().default(3000),
+    LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
+
+    /** Comma-separated list, e.g. "https://app.fineduc.io,https://fineduc.io". */
+    CORS_ALLOWED_ORIGINS: z
+      .string()
+      .default('')
+      .transform((value) =>
+        value
+          .split(',')
+          .map((origin) => origin.trim())
+          .filter((origin) => origin.length > 0),
+      ),
+
+    // The migrator/owner role's connection string — used only by `prisma
+    // migrate`. Never used by the API or worker at runtime.
+    DATABASE_URL: nonEmpty('DATABASE_URL')
+      .url('DATABASE_URL must be a valid URL')
+      .refine((v) => v.startsWith('postgres'), 'DATABASE_URL must be a postgres:// or postgresql:// URL'),
+
+    // The least-privilege `fineduc_app` role's connection string
+    // (ARCHITECTURE.md §4, §10) — what the API and worker actually connect
+    // as. Optional in development/test, where db/src/client.ts derives it
+    // from DATABASE_URL with the migration's well-known dev password;
+    // required in production, where that password must never be reused.
+    APP_DATABASE_URL: z.string().default(''),
+
+    REDIS_URL: nonEmpty('REDIS_URL')
+      .url('REDIS_URL must be a valid URL')
+      .refine((v) => v.startsWith('redis'), 'REDIS_URL must be a redis:// or rediss:// URL'),
+
+    // Signs and verifies access/refresh JWTs (ARCHITECTURE.md §10).
+    JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
+    // AES-256-GCM key for TOTP secrets and provider credentials at rest.
+    /**
+     * AES-256-GCM key for TOTP secrets and provider credentials at rest.
+     *
+     * MUST be 64 hex characters — 32 bytes. `min(32)` is not enough: the
+     * consumer does `Buffer.from(ENCRYPTION_KEY, 'hex')`, and hex parsing
+     * stops silently at the first non-hex character. A 32-character
+     * passphrase, or 64 characters that merely *look* like a key, yields a
+     * short buffer and Node throws `RangeError: Invalid key length` — not
+     * at boot, but the first time a director tries to enable 2FA.
+     *
+     * Generate one with: openssl rand -hex 32
+     */
+    ENCRYPTION_KEY: z
+      .string()
+      .regex(
+        /^[0-9a-fA-F]{64}$/,
+        'ENCRYPTION_KEY must be exactly 64 hexadecimal characters (32 bytes) — generate with: openssl rand -hex 32',
+      ),
+
+    CINETPAY_API_KEY: z.string().default(''),
+    CINETPAY_SITE_ID: z.string().default(''),
+    CINETPAY_WEBHOOK_SECRET: z.string().default(''),
+
+    WHATSAPP_PHONE_NUMBER_ID: z.string().default(''),
+    WHATSAPP_ACCESS_TOKEN: z.string().default(''),
+    WHATSAPP_WEBHOOK_SECRET: z.string().default(''),
+    SMS_API_KEY: z.string().default(''),
+
+    S3_ENDPOINT: z.string().default(''),
+    S3_BUCKET: z.string().default(''),
+    S3_ACCESS_KEY_ID: z.string().default(''),
+    S3_SECRET_ACCESS_KEY: z.string().default(''),
+
+    SENTRY_DSN: z.string().default(''),
+  })
+  .superRefine((config, ctx) => {
+    if (config.NODE_ENV !== 'production') return
+
+    // In production there is no Fake/Console adapter fallback — every
+    // provider credential must actually be present.
+    const requiredInProduction = [
+      'APP_DATABASE_URL',
+      'CINETPAY_API_KEY',
+      'CINETPAY_SITE_ID',
+      'CINETPAY_WEBHOOK_SECRET',
+      'WHATSAPP_PHONE_NUMBER_ID',
+      'WHATSAPP_ACCESS_TOKEN',
+      'WHATSAPP_WEBHOOK_SECRET',
+      'SMS_API_KEY',
+      'S3_ENDPOINT',
+      'S3_BUCKET',
+      'S3_ACCESS_KEY_ID',
+      'S3_SECRET_ACCESS_KEY',
+      'SENTRY_DSN',
+    ] as const
+
+    for (const key of requiredInProduction) {
+      if (config[key] === '') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [key],
+          message: `${key} is required when NODE_ENV=production`,
+        })
+      }
+    }
+  })
+
+export type Env = z.infer<typeof EnvSchema>
+
+/**
+ * Parse and validate the environment. Call this once, as early as possible,
+ * in every app/worker entrypoint. Throws EnvValidationError listing every
+ * invalid variable if validation fails — that is the "fail-fast" contract.
+ */
+export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
+  const result = EnvSchema.safeParse(source)
+  if (!result.success) {
+    throw new EnvValidationError(result.error)
+  }
+  return result.data
+}
+
+/**
+ * Env keys whose values must never appear in a log line. Used by the Pino
+ * redaction config (ARCHITECTURE.md §10: "no secret ever reaches a log").
+ */
+export const SENSITIVE_ENV_KEYS = [
+  'DATABASE_URL',
+  'APP_DATABASE_URL',
+  'JWT_SECRET',
+  'ENCRYPTION_KEY',
+  'CINETPAY_API_KEY',
+  'CINETPAY_WEBHOOK_SECRET',
+  'WHATSAPP_ACCESS_TOKEN',
+  'WHATSAPP_WEBHOOK_SECRET',
+  'SMS_API_KEY',
+  'S3_SECRET_ACCESS_KEY',
+  'SENTRY_DSN',
+] as const satisfies readonly (keyof Env)[]

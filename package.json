@@ -1,0 +1,35 @@
+{
+  "name": "fineduc",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:unit": "turbo run test:unit",
+    "test:integration": "turbo run test:integration",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "db:generate": "pnpm --filter @fineduc/db exec prisma generate",
+    "db:migrate": "pnpm --filter @fineduc/db exec prisma migrate dev",
+    "db:migrate:deploy": "pnpm --filter @fineduc/db exec prisma migrate deploy",
+    "db:seed": "pnpm --filter @fineduc/db run seed",
+    "db:studio": "pnpm --filter @fineduc/db exec prisma studio"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@types/node": "22",
+    "eslint": "^9.17.0",
+    "eslint-import-resolver-typescript": "^4.4.5",
+    "eslint-plugin-boundaries": "^5.0.1",
+    "marked": "^18.0.10",
+    "prettier": "^3.4.2",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.0"
+  }
+}

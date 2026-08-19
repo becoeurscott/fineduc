@@ -1,0 +1,14 @@
+@import "@fineduc/ui/theme.css";
+
+/*
+ * Tailwind v4 auto-detects sources relative to this file and EXCLUDES
+ * node_modules — which is where a pnpm workspace package is symlinked.
+ * Without this line, any utility used only inside packages/ui (h-2,
+ * bg-warning, the Badge tones…) is never generated, and the component
+ * renders with zero height or a transparent background. It fails silently:
+ * no build error, no console warning, just an invisible element.
+ *
+ * Verified: before adding this, the RecoveryMeter track computed to
+ * height:0 and its fill to rgba(0,0,0,0).
+ */
+@source "../../../../packages/ui/src";

@@ -1,0 +1,1343 @@
+// Fineduc — Prisma schema. Source of truth for every table in ARCHITECTURE.md §6.
+//
+// Conventions (AGENTS.md):
+//   - snake_case in the database (@@map / @map), camelCase in TypeScript.
+//   - Money fields are BigInt (Postgres bigint) minor units. Never Float, never Decimal.
+//   - Calendar dates end in `_on` / `On` and are @db.Date. Instants end in `_at` / `At`
+//     and are @db.Timestamptz(6). Never mix the two.
+//   - Every business table carries tenantId — the RLS policy (packages/db/prisma/migrations,
+//     the hand-written 0002 migration) enforces isolation on every one of them.
+//   - Money-moving and audit tables are APPEND-ONLY at the application layer: nothing here
+//     stops a DB-level UPDATE, but no application code may ever issue one (AGENTS.md rule #2).
+//   - Partial/filtered unique indexes (one open cash session per desk, one active academic
+//     year per tenant) are NOT expressible in the Prisma schema DSL — they live in the
+//     hand-written 0002_row_level_security_and_invariants migration, alongside RLS.
+//
+// See ARCHITECTURE.md §6 for the field-by-field rationale and §6 "Indexes that matter".
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum TenantStatus {
+  trial
+  active
+  suspended
+  cancelled
+
+  @@map("tenant_status")
+}
+
+enum Plan {
+  essentiel
+  croissance
+  institution
+
+  @@map("plan")
+}
+
+enum UserStatus {
+  invited
+  active
+  suspended
+  locked
+
+  @@map("user_status")
+}
+
+enum MembershipRole {
+  director
+  bursar
+  cashier
+  secretary
+  auditor
+
+  @@map("membership_role")
+}
+
+enum MembershipStatus {
+  invited
+  active
+  suspended
+
+  @@map("membership_status")
+}
+
+enum AcademicYearStatus {
+  draft
+  active
+  closed
+
+  @@map("academic_year_status")
+}
+
+enum StudentStatus {
+  enrolled
+  left
+  graduated
+  suspended
+
+  @@map("student_status")
+}
+
+enum PreferredChannel {
+  whatsapp
+  sms
+
+  @@map("preferred_channel")
+}
+
+enum GuardianVerificationStatus {
+  unverified
+  verified
+  quarantined
+
+  @@map("guardian_verification_status")
+}
+
+enum EnrollmentStatus {
+  active
+  withdrawn
+  transferred
+  completed
+
+  @@map("enrollment_status")
+}
+
+enum FeeScheduleStatus {
+  draft
+  published
+  archived
+
+  @@map("fee_schedule_status")
+}
+
+enum FeeCategory {
+  tuition
+  registration
+  exam
+  canteen
+  transport
+  uniform
+  boarding
+  other
+
+  @@map("fee_category")
+}
+
+enum InvoiceStatus {
+  open
+  partial
+  paid
+  cancelled
+
+  @@map("invoice_status")
+}
+
+enum InstalmentStatus {
+  pending
+  partial
+  paid
+  overdue
+  waived
+  cancelled
+
+  @@map("instalment_status")
+}
+
+enum DiscountType {
+  sibling
+  staff
+  merit
+  hardship
+  commercial
+
+  @@map("discount_type")
+}
+
+enum DiscountMethod {
+  percent
+  fixed
+
+  @@map("discount_method")
+}
+
+enum AdjustmentType {
+  credit
+  debit
+
+  @@map("adjustment_type")
+}
+
+enum LedgerEntryType {
+  charge
+  payment
+  discount
+  adjustment
+  refund
+  reversal
+  carry_forward
+
+  @@map("ledger_entry_type")
+}
+
+enum PaymentMethod {
+  mobile_money
+  cash
+  bank_transfer
+  cheque
+  card
+  waiver
+
+  @@map("payment_method")
+}
+
+enum PaymentStatus {
+  pending
+  processing
+  succeeded
+  failed
+  cancelled
+  expired
+  refunded
+  partially_refunded
+
+  @@map("payment_status")
+}
+
+enum FeeBorneBy {
+  payer
+  school
+
+  @@map("fee_borne_by")
+}
+
+enum RefundStatus {
+  requested
+  approved
+  rejected
+  processing
+  completed
+
+  @@map("refund_status")
+}
+
+enum CashSessionStatus {
+  open
+  closed
+  reconciled
+  flagged
+
+  @@map("cash_session_status")
+}
+
+enum CashMovementType {
+  payment
+  float_in
+  float_out
+  deposit_to_bank
+  correction
+
+  @@map("cash_movement_type")
+}
+
+enum MessageChannel {
+  whatsapp
+  sms
+
+  @@map("message_channel")
+}
+
+enum ReminderAppliesTo {
+  all
+  class
+  status
+
+  @@map("reminder_applies_to")
+}
+
+enum ReminderScheduleStatus {
+  scheduled
+  sent
+  skipped
+  cancelled
+  failed
+
+  @@map("reminder_schedule_status")
+}
+
+enum MessageStatus {
+  queued
+  sent
+  delivered
+  read
+  failed
+  undeliverable
+
+  @@map("message_status")
+}
+
+enum CreditLedgerEntryType {
+  topup
+  debit
+  refund
+  adjustment
+
+  @@map("credit_ledger_entry_type")
+}
+
+enum BillingPeriod {
+  monthly
+  annual
+
+  @@map("billing_period")
+}
+
+enum SubscriptionStatus {
+  trialing
+  active
+  past_due
+  cancelled
+
+  @@map("subscription_status")
+}
+
+// ============================================================================
+// TENANCY AND IDENTITY — ARCHITECTURE.md §6 "Tenancy and identity"
+// ============================================================================
+
+/// A school. The tenancy root. No tenantId column — this IS the tenant.
+model Tenant {
+  id        String       @id @default(uuid()) @db.Uuid
+  name      String
+  legalName String?      @map("legal_name")
+  country   String       @db.Char(2)
+  /// ISO 4217. One currency per tenant, immutable after creation (ARCHITECTURE.md §5).
+  currency  String       @db.Char(3)
+  /// IANA timezone name, e.g. "Africa/Douala". Every due-date computation uses this.
+  timezone  String
+  locale    String       @default("fr")
+  plan      Plan         @default(essentiel)
+  status    TenantStatus @default(trial)
+  logoUrl   String?      @map("logo_url")
+  settings  Json         @default("{}")
+  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  sites                Site[]
+  memberships          Membership[]
+  apiKeys              ApiKey[]
+  academicYears        AcademicYear[]
+  termSchedule         Term[]
+  gradeLevels          GradeLevel[]
+  classGroups          ClassGroup[]
+  students             Student[]
+  guardians            Guardian[]
+  studentGuardians     StudentGuardian[]
+  enrollments          Enrollment[]
+  feeSchedules         FeeSchedule[]
+  feeItems             FeeItem[]
+  instalmentPlans      InstalmentPlan[]
+  instalmentTemplates  InstalmentTemplate[]
+  invoices             Invoice[]
+  invoiceLines         InvoiceLine[]
+  instalments          Instalment[]
+  discounts            Discount[]
+  adjustments          Adjustment[]
+  studentLedgerEntries StudentLedgerEntry[]
+  payments             Payment[]
+  paymentAllocations   PaymentAllocation[]
+  paymentLinks         PaymentLink[]
+  receipts             Receipt[]
+  refunds              Refund[]
+  receiptCounters      ReceiptCounter[]
+  cashDesks            CashDesk[]
+  cashSessions         CashSession[]
+  cashMovements        CashMovement[]
+  messageTemplates     MessageTemplate[]
+  reminderRules        ReminderRule[]
+  reminderSchedules    ReminderSchedule[]
+  messages             Message[]
+  messageCreditLedger  MessageCreditLedgerEntry[]
+  subscription         Subscription?
+  auditLogs            AuditLog[]
+  outboxEvents         OutboxEvent[]
+
+  @@map("tenant")
+}
+
+/// A campus. Filters student/user scope; NOT an isolation boundary (tenant is).
+model Site {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  name      String
+  address   String?
+  isPrimary Boolean  @default(false) @map("is_primary")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id])
+  memberships Membership[]
+  classGroups ClassGroup[]
+  cashDesks   CashDesk[]
+
+  @@index([tenantId])
+  @@map("site")
+}
+
+/// Staff identity. Deliberately GLOBAL, not tenant-scoped — a user (e.g. a
+/// group's accountant) may hold a Membership in several tenants.
+model User {
+  id                  String     @id @default(uuid()) @db.Uuid
+  email               String     @unique
+  phone               String?
+  passwordHash        String     @map("password_hash")
+  name                String
+  status              UserStatus @default(invited)
+  totpSecretEncrypted String?    @map("totp_secret_encrypted")
+  totpEnabled         Boolean    @default(false) @map("totp_enabled")
+  lastLoginAt         DateTime?  @map("last_login_at") @db.Timestamptz(6)
+  failedLoginCount    Int        @default(0) @map("failed_login_count")
+  lockedUntil         DateTime?  @map("locked_until") @db.Timestamptz(6)
+  createdAt           DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  memberships   Membership[]
+  refreshTokens RefreshToken[]
+
+  @@map("user")
+}
+
+/// The user ↔ tenant ↔ role join. This — not User — is what RLS scopes.
+model Membership {
+  id        String           @id @default(uuid()) @db.Uuid
+  tenantId  String           @map("tenant_id") @db.Uuid
+  userId    String           @map("user_id") @db.Uuid
+  siteId    String?          @map("site_id") @db.Uuid
+  role      MembershipRole
+  status    MembershipStatus @default(invited)
+  createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+  site   Site?  @relation(fields: [siteId], references: [id])
+
+  @@unique([userId, tenantId])
+  @@index([tenantId])
+  @@map("membership")
+}
+
+/// Rotating refresh tokens with reuse detection (ARCHITECTURE.md §10):
+/// a replayed token revokes the whole `familyId`. Global, like User.
+model RefreshToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash")
+  familyId  String    @map("family_id") @db.Uuid
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(6)
+  userAgent String?   @map("user_agent")
+  ip        String?
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([familyId])
+  @@map("refresh_token")
+}
+
+/// Institution-plan programmatic access.
+model ApiKey {
+  id         String    @id @default(uuid()) @db.Uuid
+  tenantId   String    @map("tenant_id") @db.Uuid
+  name       String
+  keyHash    String    @unique @map("key_hash")
+  scopes     String[]
+  lastUsedAt DateTime? @map("last_used_at") @db.Timestamptz(6)
+  expiresAt  DateTime? @map("expires_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@map("api_key")
+}
+
+// ============================================================================
+// ACADEMIC STRUCTURE — ARCHITECTURE.md §6 "Academic structure"
+// ============================================================================
+
+/// Only one `active` academic year per tenant — enforced by a partial unique
+/// index in the 0002 migration (Prisma's schema DSL cannot express `WHERE`).
+model AcademicYear {
+  id        String             @id @default(uuid()) @db.Uuid
+  tenantId  String             @map("tenant_id") @db.Uuid
+  name      String
+  startsOn  DateTime           @map("starts_on") @db.Date
+  endsOn    DateTime           @map("ends_on") @db.Date
+  status    AcademicYearStatus @default(draft)
+  createdAt DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  terms        Term[]
+  classGroups  ClassGroup[]
+  enrollments  Enrollment[]
+  feeSchedules FeeSchedule[]
+
+  @@index([tenantId])
+  @@map("academic_year")
+}
+
+model Term {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  academicYearId String   @map("academic_year_id") @db.Uuid
+  name           String
+  startsOn       DateTime @map("starts_on") @db.Date
+  endsOn         DateTime @map("ends_on") @db.Date
+  sequence       Int
+
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@index([academicYearId])
+  @@map("term")
+}
+
+/// The class LEVEL (e.g. "6ème", "CM2") — tenant-wide, independent of year.
+model GradeLevel {
+  id       String  @id @default(uuid()) @db.Uuid
+  tenantId String  @map("tenant_id") @db.Uuid
+  name     String
+  sequence Int
+  cycle    String?
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  classGroups  ClassGroup[]
+  feeSchedules FeeSchedule[]
+
+  @@index([tenantId])
+  @@map("grade_level")
+}
+
+/// A concrete class ("6ème A") for one grade level, one site, one year.
+model ClassGroup {
+  id              String  @id @default(uuid()) @db.Uuid
+  tenantId        String  @map("tenant_id") @db.Uuid
+  gradeLevelId    String  @map("grade_level_id") @db.Uuid
+  academicYearId  String  @map("academic_year_id") @db.Uuid
+  siteId          String  @map("site_id") @db.Uuid
+  name            String
+  capacity        Int?
+  headTeacherName String? @map("head_teacher_name")
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  gradeLevel   GradeLevel   @relation(fields: [gradeLevelId], references: [id])
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+  site         Site         @relation(fields: [siteId], references: [id])
+  enrollments  Enrollment[]
+
+  @@index([tenantId])
+  @@index([academicYearId])
+  @@map("class_group")
+}
+
+// ============================================================================
+// PEOPLE — ARCHITECTURE.md §6 "People"
+// ============================================================================
+
+model Student {
+  id        String        @id @default(uuid()) @db.Uuid
+  tenantId  String        @map("tenant_id") @db.Uuid
+  matricule String
+  firstName String        @map("first_name")
+  lastName  String        @map("last_name")
+  sex       String        @db.Char(1)
+  bornOn    DateTime?     @map("born_on") @db.Date
+  photoUrl  String?       @map("photo_url")
+  status    StudentStatus @default(enrolled)
+  notes     String?
+  createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant           Tenant               @relation(fields: [tenantId], references: [id])
+  studentGuardians StudentGuardian[]
+  enrollments      Enrollment[]
+  ledgerEntries    StudentLedgerEntry[]
+  payments         Payment[]
+  paymentLinks     PaymentLink[]
+  messages         Message[]
+
+  @@unique([tenantId, matricule])
+  @@index([tenantId])
+  @@map("student")
+}
+
+model Guardian {
+  id                 String                     @id @default(uuid()) @db.Uuid
+  tenantId           String                     @map("tenant_id") @db.Uuid
+  firstName          String                     @map("first_name")
+  lastName           String                     @map("last_name")
+  /// E.164. Guardians are reached by phone, never email (ARCHITECTURE.md §5).
+  phoneE164          String                     @map("phone_e164")
+  phoneAltE164       String?                    @map("phone_alt_e164")
+  email              String?
+  relationship       String
+  preferredChannel   PreferredChannel           @default(whatsapp) @map("preferred_channel")
+  preferredLocale    String                     @default("fr") @map("preferred_locale")
+  whatsappOptIn      Boolean                    @default(true) @map("whatsapp_opt_in")
+  optOutAt           DateTime?                  @map("opt_out_at") @db.Timestamptz(6)
+  verificationStatus GuardianVerificationStatus @default(unverified) @map("verification_status")
+  bounceCount        Int                        @default(0) @map("bounce_count")
+  quarantinedAt      DateTime?                  @map("quarantined_at") @db.Timestamptz(6)
+  createdAt          DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime                   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant            Tenant             @relation(fields: [tenantId], references: [id])
+  studentGuardians  StudentGuardian[]
+  reminderSchedules ReminderSchedule[]
+  messages          Message[]
+
+  @@index([tenantId])
+  @@index([tenantId, phoneE164])
+  @@map("guardian")
+}
+
+/// A guardian ↔ student link. A separated-parents fee split lives on `sharePercent`.
+model StudentGuardian {
+  id           String  @id @default(uuid()) @db.Uuid
+  tenantId     String  @map("tenant_id") @db.Uuid
+  studentId    String  @map("student_id") @db.Uuid
+  guardianId   String  @map("guardian_id") @db.Uuid
+  isPrimary    Boolean @default(false) @map("is_primary")
+  paysFees     Boolean @default(true) @map("pays_fees")
+  sharePercent Int?    @map("share_percent")
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+  student  Student  @relation(fields: [studentId], references: [id])
+  guardian Guardian @relation(fields: [guardianId], references: [id])
+
+  @@unique([studentId, guardianId])
+  @@index([tenantId])
+  @@index([guardianId])
+  @@map("student_guardian")
+}
+
+/// The act that creates money owed (ARCHITECTURE.md §8.1). One per student per year.
+model Enrollment {
+  id                         String           @id @default(uuid()) @db.Uuid
+  tenantId                   String           @map("tenant_id") @db.Uuid
+  studentId                  String           @map("student_id") @db.Uuid
+  classGroupId               String           @map("class_group_id") @db.Uuid
+  academicYearId             String           @map("academic_year_id") @db.Uuid
+  enrolledOn                 DateTime         @map("enrolled_on") @db.Date
+  leftOn                     DateTime?        @map("left_on") @db.Date
+  status                     EnrollmentStatus @default(active)
+  feeScheduleId              String           @map("fee_schedule_id") @db.Uuid
+  carriedForwardBalanceMinor BigInt           @default(0) @map("carried_forward_balance_minor")
+  createdAt                  DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                  DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  student      Student      @relation(fields: [studentId], references: [id])
+  classGroup   ClassGroup   @relation(fields: [classGroupId], references: [id])
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+  feeSchedule  FeeSchedule  @relation(fields: [feeScheduleId], references: [id])
+  invoice      Invoice?
+
+  @@unique([studentId, academicYearId])
+  @@index([tenantId])
+  @@index([classGroupId])
+  @@map("enrollment")
+}
+
+// ============================================================================
+// FEES AND THE LEDGER — ARCHITECTURE.md §6 "Fees and the ledger"
+// ============================================================================
+
+/// Versioned; NEVER mutated after publish. A mid-year fee change publishes a
+/// new version — existing invoices keep pointing at the version they were
+/// built from (ARCHITECTURE.md §16 "mid-year fee changes").
+model FeeSchedule {
+  id             String            @id @default(uuid()) @db.Uuid
+  tenantId       String            @map("tenant_id") @db.Uuid
+  academicYearId String            @map("academic_year_id") @db.Uuid
+  gradeLevelId   String            @map("grade_level_id") @db.Uuid
+  name           String
+  version        Int               @default(1)
+  effectiveFrom  DateTime          @map("effective_from") @db.Date
+  status         FeeScheduleStatus @default(draft)
+  totalMinor     BigInt            @map("total_minor")
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant          Tenant           @relation(fields: [tenantId], references: [id])
+  academicYear    AcademicYear     @relation(fields: [academicYearId], references: [id])
+  gradeLevel      GradeLevel       @relation(fields: [gradeLevelId], references: [id])
+  feeItems        FeeItem[]
+  instalmentPlans InstalmentPlan[]
+  enrollments     Enrollment[]
+
+  @@index([tenantId])
+  @@index([academicYearId, gradeLevelId])
+  @@map("fee_schedule")
+}
+
+model FeeItem {
+  id            String      @id @default(uuid()) @db.Uuid
+  tenantId      String      @map("tenant_id") @db.Uuid
+  feeScheduleId String      @map("fee_schedule_id") @db.Uuid
+  code          String
+  label         String
+  category      FeeCategory
+  amountMinor   BigInt      @map("amount_minor")
+  isMandatory   Boolean     @default(true) @map("is_mandatory")
+  isRecurring   Boolean     @default(true) @map("is_recurring")
+  sequence      Int
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  feeSchedule  FeeSchedule   @relation(fields: [feeScheduleId], references: [id])
+  invoiceLines InvoiceLine[]
+
+  @@index([tenantId])
+  @@index([feeScheduleId])
+  @@map("fee_item")
+}
+
+model InstalmentPlan {
+  id              String @id @default(uuid()) @db.Uuid
+  tenantId        String @map("tenant_id") @db.Uuid
+  feeScheduleId   String @map("fee_schedule_id") @db.Uuid
+  name            String
+  instalmentCount Int    @map("instalment_count")
+
+  tenant      Tenant               @relation(fields: [tenantId], references: [id])
+  feeSchedule FeeSchedule          @relation(fields: [feeScheduleId], references: [id])
+  templates   InstalmentTemplate[]
+
+  @@index([tenantId])
+  @@index([feeScheduleId])
+  @@map("instalment_plan")
+}
+
+/// Expanded into dated `Instalment` rows at enrolment (ARCHITECTURE.md §8.1).
+/// Exactly one of (dueOffsetDays, dueOn) and one of (percentBp, amountMinor)
+/// is set per template — validated in packages/domain, not by the DB.
+model InstalmentTemplate {
+  id               String    @id @default(uuid()) @db.Uuid
+  tenantId         String    @map("tenant_id") @db.Uuid
+  instalmentPlanId String    @map("instalment_plan_id") @db.Uuid
+  sequence         Int
+  label            String
+  dueOffsetDays    Int?      @map("due_offset_days")
+  dueOn            DateTime? @map("due_on") @db.Date
+  percentBp        Int?      @map("percent_bp")
+  amountMinor      BigInt?   @map("amount_minor")
+
+  tenant         Tenant         @relation(fields: [tenantId], references: [id])
+  instalmentPlan InstalmentPlan @relation(fields: [instalmentPlanId], references: [id])
+
+  @@index([tenantId])
+  @@index([instalmentPlanId])
+  @@map("instalment_template")
+}
+
+/// One per Enrollment. `paidMinor`/`balanceMinor` are maintained PROJECTIONS —
+/// written only inside the same transaction as the ledger entry that changes
+/// them (AGENTS.md rule #3), verified nightly by the integrity sweep.
+model Invoice {
+  id            String        @id @default(uuid()) @db.Uuid
+  tenantId      String        @map("tenant_id") @db.Uuid
+  enrollmentId  String        @unique @map("enrollment_id") @db.Uuid
+  number        String
+  issuedOn      DateTime      @map("issued_on") @db.Date
+  totalMinor    BigInt        @map("total_minor")
+  discountMinor BigInt        @default(0) @map("discount_minor")
+  netMinor      BigInt        @map("net_minor")
+  paidMinor     BigInt        @default(0) @map("paid_minor")
+  balanceMinor  BigInt        @map("balance_minor")
+  status        InvoiceStatus @default(open)
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant        Tenant               @relation(fields: [tenantId], references: [id])
+  enrollment    Enrollment           @relation(fields: [enrollmentId], references: [id])
+  lines         InvoiceLine[]
+  instalments   Instalment[]
+  discounts     Discount[]
+  adjustments   Adjustment[]
+  ledgerEntries StudentLedgerEntry[]
+  payments      Payment[]
+  paymentLinks  PaymentLink[]
+
+  @@unique([tenantId, number])
+  @@index([tenantId])
+  @@map("invoice")
+}
+
+model InvoiceLine {
+  id          String @id @default(uuid()) @db.Uuid
+  tenantId    String @map("tenant_id") @db.Uuid
+  invoiceId   String @map("invoice_id") @db.Uuid
+  feeItemId   String @map("fee_item_id") @db.Uuid
+  label       String
+  amountMinor BigInt @map("amount_minor")
+  quantity    Int    @default(1)
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id])
+  invoice   Invoice    @relation(fields: [invoiceId], references: [id])
+  feeItem   FeeItem    @relation(fields: [feeItemId], references: [id])
+  discounts Discount[]
+
+  @@index([tenantId])
+  @@index([invoiceId])
+  @@map("invoice_line")
+}
+
+/// The unit reminders and payments hang off. `allocatedMinor` is a projection,
+/// same rule as Invoice.paidMinor.
+model Instalment {
+  id             String           @id @default(uuid()) @db.Uuid
+  tenantId       String           @map("tenant_id") @db.Uuid
+  invoiceId      String           @map("invoice_id") @db.Uuid
+  sequence       Int
+  label          String
+  /// Calendar DATE in TENANT timezone — never a timestamp (AGENTS.md rule #9).
+  dueOn          DateTime         @map("due_on") @db.Date
+  amountMinor    BigInt           @map("amount_minor")
+  allocatedMinor BigInt           @default(0) @map("allocated_minor")
+  status         InstalmentStatus @default(pending)
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant            Tenant               @relation(fields: [tenantId], references: [id])
+  invoice           Invoice              @relation(fields: [invoiceId], references: [id])
+  allocations       PaymentAllocation[]
+  paymentLinks      PaymentLink[]
+  ledgerEntries     StudentLedgerEntry[]
+  reminderSchedules ReminderSchedule[]
+
+  @@index([tenantId])
+  @@index([invoiceId])
+  // ARCHITECTURE.md §6 "Indexes that matter" — the reminder scheduler's main scan.
+  @@index([tenantId, dueOn, status])
+  @@map("instalment")
+}
+
+model Discount {
+  id            String         @id @default(uuid()) @db.Uuid
+  tenantId      String         @map("tenant_id") @db.Uuid
+  invoiceId     String         @map("invoice_id") @db.Uuid
+  invoiceLineId String?        @map("invoice_line_id") @db.Uuid
+  type          DiscountType
+  method        DiscountMethod
+  /// The input value: a basis-points integer if method=percent, else a minor-unit amount.
+  value         BigInt
+  amountMinor   BigInt         @map("amount_minor")
+  reason        String?
+  grantedBy     String         @map("granted_by") @db.Uuid
+  approvedBy    String?        @map("approved_by") @db.Uuid
+  grantedAt     DateTime       @default(now()) @map("granted_at") @db.Timestamptz(6)
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id])
+  invoice     Invoice      @relation(fields: [invoiceId], references: [id])
+  invoiceLine InvoiceLine? @relation(fields: [invoiceLineId], references: [id])
+
+  @@index([tenantId])
+  @@index([invoiceId])
+  @@map("discount")
+}
+
+/// How a mid-year fee change or a manual correction is recorded — existing
+/// instalments are never silently mutated (ARCHITECTURE.md §16).
+model Adjustment {
+  id          String         @id @default(uuid()) @db.Uuid
+  tenantId    String         @map("tenant_id") @db.Uuid
+  invoiceId   String         @map("invoice_id") @db.Uuid
+  type        AdjustmentType
+  amountMinor BigInt         @map("amount_minor")
+  reasonCode  String         @map("reason_code")
+  note        String?
+  createdBy   String         @map("created_by") @db.Uuid
+  approvedBy  String?        @map("approved_by") @db.Uuid
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  invoice Invoice @relation(fields: [invoiceId], references: [id])
+
+  @@index([tenantId])
+  @@index([invoiceId])
+  @@map("adjustment")
+}
+
+/// APPEND-ONLY. The audit-grade truth of a student's account — nothing here
+/// is ever updated or deleted (AGENTS.md rule #2).
+model StudentLedgerEntry {
+  id                String          @id @default(uuid()) @db.Uuid
+  tenantId          String          @map("tenant_id") @db.Uuid
+  studentId         String          @map("student_id") @db.Uuid
+  invoiceId         String?         @map("invoice_id") @db.Uuid
+  instalmentId      String?         @map("instalment_id") @db.Uuid
+  entryType         LedgerEntryType @map("entry_type")
+  /// Signed: charges negative-to-owe convention decided in packages/domain, not here.
+  amountMinor       BigInt          @map("amount_minor")
+  balanceAfterMinor BigInt          @map("balance_after_minor")
+  sourceType        String          @map("source_type")
+  sourceId          String          @map("source_id") @db.Uuid
+  /// Calendar DATE — the business day this entry is posted to.
+  occurredOn        DateTime        @map("occurred_on") @db.Date
+  memo              String?
+  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant     Tenant      @relation(fields: [tenantId], references: [id])
+  student    Student     @relation(fields: [studentId], references: [id])
+  invoice    Invoice?    @relation(fields: [invoiceId], references: [id])
+  instalment Instalment? @relation(fields: [instalmentId], references: [id])
+
+  @@index([tenantId])
+  // ARCHITECTURE.md §6 "Indexes that matter" — the student-file ledger view.
+  @@index([tenantId, studentId, occurredOn(sort: Desc)])
+  @@map("student_ledger_entry")
+}
+
+// ============================================================================
+// PAYMENTS — ARCHITECTURE.md §6 "Payments"
+// ============================================================================
+
+model Payment {
+  id                 String        @id @default(uuid()) @db.Uuid
+  tenantId           String        @map("tenant_id") @db.Uuid
+  studentId          String        @map("student_id") @db.Uuid
+  invoiceId          String        @map("invoice_id") @db.Uuid
+  method             PaymentMethod
+  amountMinor        BigInt        @map("amount_minor")
+  /// ISO 4217. Recorded per-payment even though a tenant has one currency —
+  /// a mismatch is rejected and flagged for manual handling (ARCHITECTURE.md §5).
+  currency           String        @db.Char(3)
+  status             PaymentStatus @default(pending)
+  provider           String?
+  providerRef        String?       @map("provider_ref")
+  providerFeeMinor   BigInt?       @map("provider_fee_minor")
+  feeBorneBy         FeeBorneBy?   @map("fee_borne_by")
+  payerPhoneE164     String?       @map("payer_phone_e164")
+  payerName          String?       @map("payer_name")
+  /// Required on every money-moving write (AGENTS.md rule #5); unique per tenant.
+  idempotencyKey     String        @map("idempotency_key")
+  cashSessionId      String?       @map("cash_session_id") @db.Uuid
+  initiatedBy        String?       @map("initiated_by") @db.Uuid
+  receivedAt         DateTime?     @map("received_at") @db.Timestamptz(6)
+  reconciledAt       DateTime?     @map("reconciled_at") @db.Timestamptz(6)
+  rawProviderPayload Json?         @map("raw_provider_payload")
+  createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant      Tenant              @relation(fields: [tenantId], references: [id])
+  student     Student             @relation(fields: [studentId], references: [id])
+  invoice     Invoice             @relation(fields: [invoiceId], references: [id])
+  cashSession CashSession?        @relation(fields: [cashSessionId], references: [id])
+  allocations PaymentAllocation[]
+  receipt     Receipt?
+  refunds     Refund[]
+
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId])
+  // ARCHITECTURE.md §6 "Indexes that matter" — the payments list, newest first.
+  @@index([tenantId, receivedAt(sort: Desc)])
+  @@map("payment")
+}
+
+/// How one payment is spread across instalments — a partial payment produces
+/// one row, a large payment several (ARCHITECTURE.md §8.2).
+model PaymentAllocation {
+  id           String @id @default(uuid()) @db.Uuid
+  tenantId     String @map("tenant_id") @db.Uuid
+  paymentId    String @map("payment_id") @db.Uuid
+  instalmentId String @map("instalment_id") @db.Uuid
+  amountMinor  BigInt @map("amount_minor")
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id])
+  payment    Payment    @relation(fields: [paymentId], references: [id])
+  instalment Instalment @relation(fields: [instalmentId], references: [id])
+
+  @@index([tenantId])
+  @@index([paymentId])
+  @@index([instalmentId])
+  @@map("payment_allocation")
+}
+
+/// The "tap, pay, done" token. Carries no PII beyond what the token itself
+/// resolves to (ARCHITECTURE.md §10).
+model PaymentLink {
+  id                   String    @id @default(uuid()) @db.Uuid
+  tenantId             String    @map("tenant_id") @db.Uuid
+  studentId            String    @map("student_id") @db.Uuid
+  invoiceId            String    @map("invoice_id") @db.Uuid
+  instalmentId         String?   @map("instalment_id") @db.Uuid
+  /// 32 random bytes, base64url. Single-purpose, expiring, unguessable.
+  token                String    @unique
+  suggestedAmountMinor BigInt?   @map("suggested_amount_minor")
+  minAmountMinor       BigInt?   @map("min_amount_minor")
+  expiresAt            DateTime  @map("expires_at") @db.Timestamptz(6)
+  usedAt               DateTime? @map("used_at") @db.Timestamptz(6)
+  createdBy            String?   @map("created_by") @db.Uuid
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant     Tenant      @relation(fields: [tenantId], references: [id])
+  student    Student     @relation(fields: [studentId], references: [id])
+  invoice    Invoice     @relation(fields: [invoiceId], references: [id])
+  instalment Instalment? @relation(fields: [instalmentId], references: [id])
+
+  @@index([tenantId])
+  @@map("payment_link")
+}
+
+/// IMMUTABLE. A correction issues a credit note, never an edit — gapless
+/// numbering comes from ReceiptCounter, locked FOR UPDATE (ARCHITECTURE.md §8.3).
+model Receipt {
+  id          String          @id @default(uuid()) @db.Uuid
+  tenantId    String          @map("tenant_id") @db.Uuid
+  paymentId   String          @unique @map("payment_id") @db.Uuid
+  number      String
+  issuedAt    DateTime        @default(now()) @map("issued_at") @db.Timestamptz(6)
+  pdfUrl      String?         @map("pdf_url")
+  sentAt      DateTime?       @map("sent_at") @db.Timestamptz(6)
+  sentChannel MessageChannel? @map("sent_channel")
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  payment Payment @relation(fields: [paymentId], references: [id])
+
+  @@unique([tenantId, number])
+  @@index([tenantId])
+  @@map("receipt")
+}
+
+model Refund {
+  id          String       @id @default(uuid()) @db.Uuid
+  tenantId    String       @map("tenant_id") @db.Uuid
+  paymentId   String       @map("payment_id") @db.Uuid
+  amountMinor BigInt       @map("amount_minor")
+  reasonCode  String       @map("reason_code")
+  note        String?
+  status      RefundStatus @default(requested)
+  requestedBy String       @map("requested_by") @db.Uuid
+  approvedBy  String?      @map("approved_by") @db.Uuid
+  providerRef String?      @map("provider_ref")
+  processedAt DateTime?    @map("processed_at") @db.Timestamptz(6)
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  payment Payment @relation(fields: [paymentId], references: [id])
+
+  @@index([tenantId])
+  @@index([paymentId])
+  @@map("refund")
+}
+
+/// Every inbound webhook, stored raw before processing. Unique on
+/// (provider, eventId) is the idempotency guard for the webhook processor
+/// (ARCHITECTURE.md §8.2). Deliberately NOT tenant-scoped: the tenant is
+/// unknown until the payload is parsed and matched to a Payment, so this
+/// table carries no RLS policy — it is written only by trusted workers.
+model ProviderEvent {
+  id              String    @id @default(uuid()) @db.Uuid
+  provider        String
+  eventId         String    @map("event_id")
+  eventType       String    @map("event_type")
+  signatureValid  Boolean   @map("signature_valid")
+  payload         Json
+  receivedAt      DateTime  @default(now()) @map("received_at") @db.Timestamptz(6)
+  processedAt     DateTime? @map("processed_at") @db.Timestamptz(6)
+  processingError String?   @map("processing_error")
+  attempts        Int       @default(0)
+
+  @@unique([provider, eventId])
+  @@map("provider_event")
+}
+
+// ============================================================================
+// CASH CONTROL — ARCHITECTURE.md §6 "Cash control"
+// ============================================================================
+
+model CashDesk {
+  id       String  @id @default(uuid()) @db.Uuid
+  tenantId String  @map("tenant_id") @db.Uuid
+  siteId   String  @map("site_id") @db.Uuid
+  name     String
+  isActive Boolean @default(true) @map("is_active")
+
+  tenant   Tenant        @relation(fields: [tenantId], references: [id])
+  site     Site          @relation(fields: [siteId], references: [id])
+  sessions CashSession[]
+
+  @@index([tenantId])
+  @@map("cash_desk")
+}
+
+/// One `open` session per desk — enforced by a partial unique index in the
+/// 0002 migration. Immutable once closed; corrections are a NEW session.
+model CashSession {
+  id                 String            @id @default(uuid()) @db.Uuid
+  tenantId           String            @map("tenant_id") @db.Uuid
+  cashDeskId         String            @map("cash_desk_id") @db.Uuid
+  cashierUserId      String            @map("cashier_user_id") @db.Uuid
+  openedAt           DateTime          @default(now()) @map("opened_at") @db.Timestamptz(6)
+  openingFloatMinor  BigInt            @map("opening_float_minor")
+  closedAt           DateTime?         @map("closed_at") @db.Timestamptz(6)
+  declaredCloseMinor BigInt?           @map("declared_close_minor")
+  expectedCloseMinor BigInt?           @map("expected_close_minor")
+  varianceMinor      BigInt?           @map("variance_minor")
+  varianceReason     String?           @map("variance_reason")
+  status             CashSessionStatus @default(open)
+  closedBy           String?           @map("closed_by") @db.Uuid
+  reconciledBy       String?           @map("reconciled_by") @db.Uuid
+
+  tenant    Tenant         @relation(fields: [tenantId], references: [id])
+  cashDesk  CashDesk       @relation(fields: [cashDeskId], references: [id])
+  payments  Payment[]
+  movements CashMovement[]
+
+  @@index([tenantId])
+  @@index([cashDeskId])
+  @@map("cash_session")
+}
+
+/// APPEND-ONLY.
+model CashMovement {
+  id            String           @id @default(uuid()) @db.Uuid
+  tenantId      String           @map("tenant_id") @db.Uuid
+  cashSessionId String           @map("cash_session_id") @db.Uuid
+  type          CashMovementType
+  /// Signed: positive for money in, negative for money out.
+  amountMinor   BigInt           @map("amount_minor")
+  reference     String?
+  note          String?
+  createdBy     String           @map("created_by") @db.Uuid
+  createdAt     DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id])
+  cashSession CashSession @relation(fields: [cashSessionId], references: [id])
+
+  @@index([tenantId])
+  @@index([cashSessionId])
+  @@map("cash_movement")
+}
+
+/// Gapless receipt numbering. A dedicated counter row, locked FOR UPDATE
+/// inside the payment transaction — NOT a Postgres SEQUENCE, which gaps on
+/// rollback and reads to an auditor as a deleted receipt (ARCHITECTURE.md §16).
+model ReceiptCounter {
+  id         String   @id @default(uuid()) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  year       Int
+  lastNumber Int      @default(0) @map("last_number")
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, year])
+  @@map("receipt_counter")
+}
+
+// ============================================================================
+// MESSAGING — ARCHITECTURE.md §6 "Messaging"
+// ============================================================================
+
+model MessageTemplate {
+  id                     String         @id @default(uuid()) @db.Uuid
+  tenantId               String         @map("tenant_id") @db.Uuid
+  code                   String
+  channel                MessageChannel
+  locale                 String
+  subject                String?
+  body                   String
+  variables              String[]
+  whatsappTemplateName   String?        @map("whatsapp_template_name")
+  whatsappTemplateStatus String?        @map("whatsapp_template_status")
+  isActive               Boolean        @default(true) @map("is_active")
+  createdAt              DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, code, locale])
+  @@index([tenantId])
+  @@map("message_template")
+}
+
+model ReminderRule {
+  id              String            @id @default(uuid()) @db.Uuid
+  tenantId        String            @map("tenant_id") @db.Uuid
+  name            String
+  /// Signed. -7 = seven days BEFORE due_on; +3 = three days after.
+  offsetDays      Int               @map("offset_days")
+  channel         MessageChannel
+  templateCode    String            @map("template_code")
+  escalationLevel Int               @default(0) @map("escalation_level")
+  isActive        Boolean           @default(true) @map("is_active")
+  appliesTo       ReminderAppliesTo @default(all) @map("applies_to")
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant    Tenant             @relation(fields: [tenantId], references: [id])
+  schedules ReminderSchedule[]
+
+  @@index([tenantId])
+  @@map("reminder_rule")
+}
+
+/// Materialised intent, generated nightly. Eligibility is re-checked at SEND
+/// time against the live balance — never trust a decision made here
+/// (AGENTS.md rule #7).
+model ReminderSchedule {
+  id             String                 @id @default(uuid()) @db.Uuid
+  tenantId       String                 @map("tenant_id") @db.Uuid
+  instalmentId   String                 @map("instalment_id") @db.Uuid
+  reminderRuleId String                 @map("reminder_rule_id") @db.Uuid
+  guardianId     String                 @map("guardian_id") @db.Uuid
+  scheduledFor   DateTime               @map("scheduled_for") @db.Timestamptz(6)
+  status         ReminderScheduleStatus @default(scheduled)
+  skipReason     String?                @map("skip_reason")
+  messageId      String?                @map("message_id") @db.Uuid
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  instalment   Instalment   @relation(fields: [instalmentId], references: [id])
+  reminderRule ReminderRule @relation(fields: [reminderRuleId], references: [id])
+  guardian     Guardian     @relation(fields: [guardianId], references: [id])
+  message      Message?     @relation(fields: [messageId], references: [id])
+
+  @@unique([instalmentId, reminderRuleId, guardianId])
+  @@index([tenantId])
+  // ARCHITECTURE.md §6 "Indexes that matter" — the message-sender's main scan.
+  @@index([status, scheduledFor])
+  @@map("reminder_schedule")
+}
+
+model Message {
+  id                String         @id @default(uuid()) @db.Uuid
+  tenantId          String         @map("tenant_id") @db.Uuid
+  guardianId        String         @map("guardian_id") @db.Uuid
+  studentId         String?        @map("student_id") @db.Uuid
+  channel           MessageChannel
+  provider          String
+  toPhoneE164       String         @map("to_phone_e164")
+  templateCode      String         @map("template_code")
+  locale            String
+  bodyRendered      String         @map("body_rendered")
+  status            MessageStatus  @default(queued)
+  providerMessageId String?        @map("provider_message_id")
+  errorCode         String?        @map("error_code")
+  costMinor         BigInt         @map("cost_minor")
+  sentAt            DateTime?      @map("sent_at") @db.Timestamptz(6)
+  deliveredAt       DateTime?      @map("delivered_at") @db.Timestamptz(6)
+  readAt            DateTime?      @map("read_at") @db.Timestamptz(6)
+  createdAt         DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant            Tenant             @relation(fields: [tenantId], references: [id])
+  guardian          Guardian           @relation(fields: [guardianId], references: [id])
+  student           Student?           @relation(fields: [studentId], references: [id])
+  reminderSchedules ReminderSchedule[]
+
+  @@index([tenantId])
+  @@index([guardianId])
+  @@map("message")
+}
+
+/// APPEND-ONLY prepaid wallet. Debited in the same transaction as the
+/// Message row it pays for (ARCHITECTURE.md §8.5) — never send on credit.
+model MessageCreditLedgerEntry {
+  id                String                @id @default(uuid()) @db.Uuid
+  tenantId          String                @map("tenant_id") @db.Uuid
+  entryType         CreditLedgerEntryType @map("entry_type")
+  amountMinor       BigInt                @map("amount_minor")
+  balanceAfterMinor BigInt                @map("balance_after_minor")
+  messageId         String?               @map("message_id") @db.Uuid
+  note              String?
+  createdAt         DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@map("message_credit_ledger")
+}
+
+// ============================================================================
+// PLATFORM — ARCHITECTURE.md §6 "Platform"
+// ============================================================================
+
+model Subscription {
+  id                 String             @id @default(uuid()) @db.Uuid
+  tenantId           String             @unique @map("tenant_id") @db.Uuid
+  plan               Plan
+  billingPeriod      BillingPeriod      @map("billing_period")
+  studentCap         Int?               @map("student_cap")
+  priceMinor         BigInt             @map("price_minor")
+  currentPeriodStart DateTime           @map("current_period_start") @db.Date
+  currentPeriodEnd   DateTime           @map("current_period_end") @db.Date
+  status             SubscriptionStatus @default(trialing)
+  createdAt          DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@map("subscription")
+}
+
+/// APPEND-ONLY, no delete grant for any application role (AGENTS.md rule #10).
+/// Written by the audit interceptor on every mutating request.
+model AuditLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  actorUserId String?  @map("actor_user_id") @db.Uuid
+  actorRole   String?  @map("actor_role")
+  action      String
+  entityType  String   @map("entity_type")
+  entityId    String   @map("entity_id") @db.Uuid
+  before      Json?
+  after       Json?
+  ip          String?
+  userAgent   String?  @map("user_agent")
+  requestId   String?  @map("request_id")
+  occurredAt  DateTime @default(now()) @map("occurred_at") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  // ARCHITECTURE.md §6 "Indexes that matter" — the audit trail for one entity.
+  @@index([tenantId, entityType, entityId, occurredAt(sort: Desc)])
+  @@map("audit_log")
+}
+
+/// Transactional outbox: a domain event is written in the SAME transaction
+/// as its state change, then published to a queue by a 5s poller
+/// (ARCHITECTURE.md §6, §11 `outbox-publisher`) — this is how "payment
+/// saved but receipt never sent" is avoided.
+model OutboxEvent {
+  id            String    @id @default(uuid()) @db.Uuid
+  tenantId      String?   @map("tenant_id") @db.Uuid
+  aggregateType String    @map("aggregate_type")
+  aggregateId   String    @map("aggregate_id") @db.Uuid
+  eventType     String    @map("event_type")
+  payload       Json
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  publishedAt   DateTime? @map("published_at") @db.Timestamptz(6)
+  attempts      Int       @default(0)
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
+
+  @@index([publishedAt])
+  @@index([tenantId])
+  @@map("outbox_event")
+}

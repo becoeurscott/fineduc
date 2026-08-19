@@ -1,0 +1,120 @@
+@import "@fineduc/ui/theme.css";
+
+/*
+ * Tailwind v4 excludes node_modules, where pnpm symlinks workspace
+ * packages — without this, any utility used only inside packages/ui
+ * silently generates nothing. See ARCHITECTURE-ESSENTIALS.md.
+ */
+@source "../../../../packages/ui/src";
+
+/*
+ * ---------------------------------------------------------------------
+ * Marketing-site design system.
+ *
+ * These values were MEASURED off the FintechX template (the mirror in
+ * `D:\mes site\fineduc`), by rendering it and reading computed styles —
+ * not eyeballed from a screenshot.
+ *
+ * Deliberately scoped to apps/web rather than changed in packages/ui,
+ * because the marketing site and the dashboard invert each other:
+ *   marketing → WHITE page, #edf1f4 cards, flat, no borders
+ *   dashboard → #edf1f4 page, white cards, hairline borders
+ * Both are correct for their context; the shared package keeps the app
+ * values and this file overrides for marketing.
+ * ---------------------------------------------------------------------
+ */
+@theme {
+  /* Measured: 1200px content column. */
+  --container-site: 75rem; /* 1200px */
+
+  /* Measured: cards are 20px radius, buttons are fully pill (100px). */
+  --radius-mkt-card: 20px;
+  --radius-mkt-pill: 100px;
+}
+
+/*
+ * NOTE: the page background is set with `bg-white` on <body> in
+ * [locale]/layout.tsx, not here. packages/ui's theme.css also declares a
+ * body background in @layer base, and two base-layer rules for the same
+ * property is a cascade race — a utility class on the element wins
+ * cleanly and is greppable from the layout.
+ */
+
+/*
+ * Measured card: #edf1f4 fill, 20px radius, 40px padding, NO border and
+ * NO shadow. The flatness is the look — adding a border or a shadow is
+ * what makes a copy of this template read as "not quite right".
+ */
+@utility mkt-card {
+  background-color: #edf1f4;
+  border-radius: var(--radius-mkt-card);
+  padding: 2rem;
+}
+
+@utility mkt-card-lg {
+  background-color: #edf1f4;
+  border-radius: var(--radius-mkt-card);
+  padding: 2.5rem; /* 40px, the template's desktop card padding */
+}
+
+/* The template's dark cards are pure black, not the ink grey. */
+@utility mkt-card-dark {
+  background-color: #000000;
+  color: #ffffff;
+  border-radius: var(--radius-mkt-card);
+  padding: 2.5rem;
+}
+
+/*
+ * Measured type scale.
+ *   h1 100px / line-height 1.0 / letter-spacing -1.4px / weight 600
+ *   h2  48px / line-height 1.2 / letter-spacing -1px   / weight 600
+ * The letter-spacing is a FIXED px value in the template at every size,
+ * so it is reproduced as fixed px here rather than converted to em.
+ */
+@utility mkt-h1 {
+  font-size: clamp(2.75rem, 7vw, 6.25rem);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -1.4px;
+  color: #1d1d1d;
+}
+
+@utility mkt-h2 {
+  font-size: clamp(1.875rem, 4vw, 3rem);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -1px;
+  color: #1d1d1d;
+}
+
+@utility mkt-h3 {
+  font-size: 1.375rem; /* 22px — one of the template's recurring sizes */
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.4px;
+  color: #1d1d1d;
+}
+
+/* The nav is fixed, so nothing reserves space for it. The landing hero is
+   built to run underneath (its own 150px of top padding clears the pill and
+   the landscape is meant to reach y=0), but a subpage that opens straight
+   into a <Section> would sit 12px under the pill on a phone. Give only that
+   first section the clearance, and only where its own padding is too small
+   to provide it. */
+main > section[data-section]:first-child {
+  padding-top: 148px;
+}
+@media (min-width: 640px) {
+  main > section[data-section]:first-child { padding-top: 180px; }
+}
+@media (min-width: 1024px) {
+  main > section[data-section]:first-child { padding-top: 260px; }
+}
+
+/* Infinite ticker (components/ticker.tsx). The track holds its items twice
+   and moves by exactly half its own width, so the seam is invisible. */
+@keyframes ticker {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
