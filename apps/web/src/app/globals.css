@@ -73,15 +73,29 @@
  * so it is reproduced as fixed px here rather than converted to em.
  */
 @utility mkt-h1 {
-  font-size: clamp(2.75rem, 7vw, 6.25rem);
+  /* Phone sizing is set by what "Fineduc AI Platform" needs to hold ONE
+     line, not by the template's 40px: the template's title is two words
+     and is MEANT to stack, ours is three and reads as a wrap if it breaks.
+     Measured at 375px, 36px renders 315px into a 335px column; 9.6vw holds
+     that ratio down to 320px, where the 28px floor takes over. */
+  font-size: clamp(1.75rem, 9.6vw, 2.25rem);
   font-weight: 600;
   line-height: 1;
   letter-spacing: -1.4px;
   color: #1d1d1d;
 }
 
+/* From `sm` up there is room for the template's real curve, which tops out
+   at its measured 100px. Declared outside the utility so it wins on source
+   order regardless of how the utilities layer is emitted. */
+@media (min-width: 640px) {
+  .mkt-h1 { font-size: clamp(2.75rem, 7vw, 6.25rem); }
+}
+
 @utility mkt-h2 {
-  font-size: clamp(1.875rem, 4vw, 3rem);
+  /* 34px floor, measured off the template's phone variant — 30px read a
+     step too quiet against a 36px h1. */
+  font-size: clamp(2.125rem, 4vw, 3rem);
   font-weight: 600;
   line-height: 1.2;
   letter-spacing: -1px;
@@ -96,6 +110,16 @@
   color: #1d1d1d;
 }
 
+/* Link hover, measured off the template: `color 0.4s cubic-bezier(0.44,0,0.56,1)`.
+   Symmetric ease — it leaves as slowly as it arrives, so a pointer sweeping
+   across a nav does not leave a trail of hard colour snaps behind it.
+   Tailwind's default `transition-colors` is 150ms and eases out only. */
+@utility mkt-link {
+  transition-property: color;
+  transition-duration: 0.4s;
+  transition-timing-function: cubic-bezier(0.44, 0, 0.56, 1);
+}
+
 /* The nav is fixed, so nothing reserves space for it. The landing hero is
    built to run underneath (its own 150px of top padding clears the pill and
    the landscape is meant to reach y=0), but a subpage that opens straight
@@ -103,7 +127,7 @@
    first section the clearance, and only where its own padding is too small
    to provide it. */
 main > section[data-section]:first-child {
-  padding-top: 148px;
+  padding-top: 168px;
 }
 @media (min-width: 640px) {
   main > section[data-section]:first-child { padding-top: 180px; }

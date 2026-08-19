@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import clsx from 'clsx'
+import { CountUp } from './count-up'
 /**
  * Typed structurally rather than as `CONTENT['fr']['pricing']`.
  *
@@ -104,7 +105,7 @@ export function PricingTable({ pricing, ctaHref }: { pricing: Pricing; ctaHref: 
                     highlighted ? 'text-white' : 'text-ink',
                   )}
                 >
-                  {annual ? plan.annual : plan.monthly}
+                  <CountUp value={annual ? plan.annual : plan.monthly} />
                 </span>
                 <span className={clsx('ml-1.5 text-sm', highlighted ? 'text-white/60' : 'text-slate')}>
                   FCFA {pricing.perMonth}

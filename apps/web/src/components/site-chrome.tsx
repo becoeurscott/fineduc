@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import clsx from 'clsx'
 import { WHATSAPP_URL, contentFor, type Locale } from '@/lib/content'
+import { MobileMenu } from './mobile-menu'
 
 /* ------------------------------------------------------------- layout bits */
 
@@ -28,8 +29,9 @@ export function Section({
       data-section=""
       className={clsx(
         // scroll-mt: the nav is fixed, so an #anchor jump would otherwise
-        // park the section heading underneath the pill.
-        'scroll-mt-[84px] px-5 py-20 sm:py-28 lg:py-[200px]',
+        // park the section heading underneath the pill. Two values because
+        // the pill is taller and sits in a deeper gutter on desktop.
+        'scroll-mt-[84px] px-5 py-[100px] sm:py-28 lg:scroll-mt-[98px] lg:py-[200px]',
         tone === 'white' && 'bg-white',
         tone === 'canvas' && 'bg-[#edf1f4]',
         tone === 'ink' && 'bg-black text-white',
@@ -156,31 +158,33 @@ export function SiteHeader({ locale }: { locale: Locale }) {
   return (
     /*
       Measured off the template: the nav is not a bar, it is a pill that
-      floats clear of every edge — 16px of transparent gutter above it, and
-      centred well inside the 1200px column. Solid white pill + a 2px
-      #dde5ed ring, no blur on the pill itself.
+      floats clear of every edge. The template ships two variants and they
+      differ in more than width — mobile is a 52px pill in a 16px gutter
+      with a 2px #dde5ed ring and the links behind a menu button; desktop
+      is a 58px pill in a 20px gutter with a 4px ring and the links inline.
+      Both are reproduced here. No blur on the pill itself.
 
       `fixed`, not `sticky`: the page has to run underneath the nav all the
       way to y=0, otherwise the header reserves its own 84px band and the
       hero can never reach the top of the screen. The blur below sits
       between that content and the pill.
     */
-    <header className="fixed inset-x-0 top-0 z-40 px-5 py-4">
+    <header className="fixed inset-x-0 top-0 z-40 px-5 py-4 lg:py-5">
       <ProgressiveBlur />
-      <div className="relative mx-auto flex h-[52px] max-w-[1080px] items-center justify-between gap-5 rounded-[10px] bg-white px-2.5 shadow-[0_0_0_2px_rgba(221,229,237,0.7)]">
+      <div className="relative mx-auto flex h-[52px] max-w-[1080px] items-center justify-between gap-5 rounded-[10px] bg-white px-2.5 shadow-[0_0_0_2px_rgba(221,229,237,0.7)] lg:h-[58px] lg:shadow-[0_0_0_4px_rgba(221,229,237,0.7)]">
         <Link href={`/${locale}`} className="flex items-center gap-2.5">
           <span className="grid size-8 place-items-center rounded-lg bg-ink text-sm font-bold text-white">F</span>
           <span className="hidden text-base font-semibold tracking-tight text-ink min-[400px]:inline">Fineduc</span>
         </Link>
 
         <nav className="hidden items-center gap-7 md:flex" aria-label="Principal">
-          <Link href={`/${locale}#fonctionnalites`} className="text-sm text-slate transition-colors hover:text-ink">
+          <Link href={`/${locale}#fonctionnalites`} className="mkt-link text-sm text-slate hover:text-ink">
             {t.nav.features}
           </Link>
-          <Link href={`/${locale}/tarifs`} className="text-sm text-slate transition-colors hover:text-ink">
+          <Link href={`/${locale}/tarifs`} className="mkt-link text-sm text-slate hover:text-ink">
             {t.nav.pricing}
           </Link>
-          <Link href={`/${locale}/securite`} className="text-sm text-slate transition-colors hover:text-ink">
+          <Link href={`/${locale}/securite`} className="mkt-link text-sm text-slate hover:text-ink">
             {t.nav.security}
           </Link>
         </nav>
@@ -189,19 +193,25 @@ export function SiteHeader({ locale }: { locale: Locale }) {
           <Link
             href={`/${other}`}
             hrefLang={other}
-            className="rounded-[var(--radius-mkt-pill)] bg-[#edf1f4] px-3 py-1.5 text-xs font-medium text-slate transition-colors hover:text-ink"
+            className="mkt-link hidden rounded-[var(--radius-mkt-pill)] bg-[#edf1f4] px-3 py-1.5 text-xs font-medium text-slate hover:text-ink md:inline-block"
           >
             {other.toUpperCase()}
           </Link>
+          {/*
+            Hidden on phones, like the template's mobile pill, which carries
+            only the logo and the menu button. Two black shapes side by side
+            made the hamburger read as part of the button rather than as a
+            control; and the hero's own primary CTA is now above the fold on
+            a phone, so this one was earning nothing.
+            32px tall: all a 52px pill with 10px padding leaves.
+          */}
           <Link
             href={`/${locale}/demo`}
-            // 32px, matching the template's menu button — that is all the
-            // height a 52px pill with 10px padding leaves.
-            className="inline-flex h-8 items-center rounded-[var(--radius-mkt-pill)] bg-black px-4 text-sm font-medium whitespace-nowrap text-white transition-colors hover:bg-[#323232]"
+            className="hidden h-8 items-center rounded-[var(--radius-mkt-pill)] bg-black px-4 text-sm font-medium whitespace-nowrap text-white transition-colors hover:bg-[#323232] md:inline-flex"
           >
-            <span className="sm:hidden">{t.nav.demoShort}</span>
-            <span className="hidden sm:inline">{t.nav.demo}</span>
+            {t.nav.demo}
           </Link>
+          <MobileMenu locale={locale} />
         </div>
       </div>
     </header>
@@ -230,17 +240,17 @@ export function SiteFooter({ locale }: { locale: Locale }) {
             <h3 className="text-xs font-semibold tracking-[0.14em] text-slate uppercase">{t.footer.product}</h3>
             <ul className="mt-3 space-y-2 text-sm">
               <li>
-                <Link href={`/${locale}#fonctionnalites`} className="text-slate hover:text-ink">
+                <Link href={`/${locale}#fonctionnalites`} className="mkt-link text-slate hover:text-ink">
                   {t.nav.features}
                 </Link>
               </li>
               <li>
-                <Link href={`/${locale}/tarifs`} className="text-slate hover:text-ink">
+                <Link href={`/${locale}/tarifs`} className="mkt-link text-slate hover:text-ink">
                   {t.nav.pricing}
                 </Link>
               </li>
               <li>
-                <Link href={`/${locale}/securite`} className="text-slate hover:text-ink">
+                <Link href={`/${locale}/securite`} className="mkt-link text-slate hover:text-ink">
                   {t.nav.security}
                 </Link>
               </li>
@@ -251,12 +261,12 @@ export function SiteFooter({ locale }: { locale: Locale }) {
             <h3 className="text-xs font-semibold tracking-[0.14em] text-slate uppercase">{t.footer.legal}</h3>
             <ul className="mt-3 space-y-2 text-sm">
               <li>
-                <Link href={`/${locale}/legal/confidentialite`} className="text-slate hover:text-ink">
+                <Link href={`/${locale}/legal/confidentialite`} className="mkt-link text-slate hover:text-ink">
                   {t.footer.privacy}
                 </Link>
               </li>
               <li>
-                <Link href={`/${locale}/legal/conditions`} className="text-slate hover:text-ink">
+                <Link href={`/${locale}/legal/conditions`} className="mkt-link text-slate hover:text-ink">
                   {t.footer.terms}
                 </Link>
               </li>

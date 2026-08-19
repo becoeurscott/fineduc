@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import clsx from 'clsx'
 
 /**
@@ -16,7 +16,22 @@ import clsx from 'clsx'
  *
  * Both states are in the HTML at all times (one hidden), so the full
  * copy is indexable and readable without JavaScript.
+ *
+ * The switch is driven by SCROLL, not by the reader: the card flips to
+ * "after" as it rises through the viewport, so the argument makes itself
+ * to someone who never touches the control. The tabs stay real buttons
+ * for keyboard and screen-reader users — but the first deliberate click
+ * hands control over for good, because a toggle that fights the pointer
+ * is worse than one that never moved.
  */
+
+/**
+ * Hysteresis: flip to "after" once the card's top passes 35% of the
+ * viewport, back to "before" only below 50%. Without the gap, a card
+ * parked near the threshold strobes on every scroll tick.
+ */
+const FLIP_TO_AFTER = 0.35
+const FLIP_TO_BEFORE = 0.5
 type Stat = { readonly value: string; readonly label: string }
 type Item = { readonly title: string; readonly body: string }
 
@@ -36,9 +51,41 @@ export function BeforeAfter({
   afterStats: readonly Stat[]
 }) {
   const [showAfter, setShowAfter] = useState(false)
+  const cardRef = useRef<HTMLDivElement>(null)
+  // Set on the first real click; scroll never touches the state again.
+  const takenOver = useRef(false)
+
+  useEffect(() => {
+    const node = cardRef.current
+    if (!node) return
+
+    let frame = 0
+    const read = () => {
+      frame = 0
+      if (takenOver.current) return
+      const top = node.getBoundingClientRect().top / window.innerHeight
+      setShowAfter((current) => (current ? top <= FLIP_TO_BEFORE : top < FLIP_TO_AFTER))
+    }
+    const onScroll = () => {
+      // Coalesce to one read per frame — scroll fires far faster than paint.
+      if (!frame) frame = requestAnimationFrame(read)
+    }
+
+    read()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onScroll)
+      if (frame) cancelAnimationFrame(frame)
+    }
+  }, [])
 
   return (
-    <div className="mx-auto w-full max-w-[760px] rounded-[20px] bg-[#1d1d1d] p-5 text-left text-white sm:p-8">
+    <div
+      ref={cardRef}
+      className="mx-auto w-full max-w-[760px] rounded-[20px] bg-[#1d1d1d] p-5 text-left text-white sm:p-8"
+    >
       {/* toggle */}
       <div
         role="tablist"
@@ -53,7 +100,10 @@ export function BeforeAfter({
             key={String(tab.key)}
             role="tab"
             aria-selected={showAfter === tab.key}
-            onClick={() => setShowAfter(tab.key)}
+            onClick={() => {
+              takenOver.current = true
+              setShowAfter(tab.key)
+            }}
             className={clsx(
               'h-11 flex-1 rounded-[100px] text-[15px] font-medium transition-all duration-300',
               showAfter === tab.key ? 'bg-white text-ink shadow-sm' : 'text-white/70 hover:text-white',

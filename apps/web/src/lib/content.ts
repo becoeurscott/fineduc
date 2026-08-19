@@ -30,6 +30,8 @@ export const CONTENT = {
       demo: 'Demander une démo',
       demoShort: 'Démo',
       login: 'Se connecter',
+      menuOpen: 'Ouvrir le menu',
+      menuClose: 'Fermer le menu',
     },
     hero: {
       eyebrow: 'Pour les écoles privées d’Afrique',
@@ -40,6 +42,10 @@ export const CONTENT = {
       subtitle:
         'Arrêtez de courir après les frais de scolarité. Un dossier par élève, des échéances claires, des rappels automatiques WhatsApp et SMS, le paiement mobile money — et un directeur qui voit tout, en temps réel.',
       ctaPrimary: 'Commencer maintenant',
+      /* Phones only. The template fits both hero buttons on one line at
+         375px; French runs longer than English, so the primary label has
+         to lose its adverb to keep that row intact. */
+      ctaPrimaryShort: 'Commencer',
       ctaSecondary: 'Voir la démo',
       trust: [
         'Aucun fonds ne transite par Fineduc',
@@ -360,6 +366,8 @@ export const CONTENT = {
       demo: 'Request a demo',
       demoShort: 'Demo',
       login: 'Sign in',
+      menuOpen: 'Open menu',
+      menuClose: 'Close menu',
     },
     hero: {
       eyebrow: 'For private schools in Africa',
@@ -367,6 +375,7 @@ export const CONTENT = {
       subtitle:
         'Stop chasing school fees. One file per student, clear instalments, automatic WhatsApp and SMS reminders, mobile money payment — and a director who sees everything, in real time.',
       ctaPrimary: 'Get started now',
+      ctaPrimaryShort: 'Get started',
       ctaSecondary: 'View demo',
       trust: ['No funds ever pass through Fineduc', 'Mobile money via a licensed aggregator', 'Your data belongs to you'],
     },

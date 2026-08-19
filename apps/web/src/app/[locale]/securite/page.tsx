@@ -24,7 +24,7 @@ export default async function SecurityPage({ params }: { params: Promise<{ local
         </Reveal>
         <div className="mt-12 grid gap-4 sm:grid-cols-2">
           {t.security.items.map((item, i) => (
-            <Reveal key={item.title} delay={i * 50}>
+            <Reveal key={item.title} delay={i * 50} distance="sm">
               <article className="mkt-card-lg h-full">
                 <h2 className="mkt-h3">{item.title}</h2>
                 <p className="mt-3 text-[15px] leading-[1.6] text-slate">{item.body}</p>

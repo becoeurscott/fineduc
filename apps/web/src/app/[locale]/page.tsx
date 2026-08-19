@@ -31,7 +31,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       <LandscapeSection
         img="/landscape/hero-meadow.jpg"
         priority
-        className="pt-24 pb-48 sm:pt-28 lg:pt-[150px] lg:pb-[260px]"
+        className="pt-[128px] pb-[100px] sm:pt-28 sm:pb-40 lg:pt-[150px] lg:pb-[260px]"
       >
         <Clouds />
         <div className="text-center">
@@ -45,20 +45,23 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
                 the width where it actually fits; below that it may wrap. */}
             <h1 className="mkt-h1 mx-auto mt-6 text-balance lg:whitespace-nowrap">{t.hero.title}</h1>
             {/* Measured: 20px / 500 / slate — the template's value line under the title. */}
-            <p className="mx-auto mt-7 max-w-[720px] text-[17px] leading-[1.55] font-medium text-pretty text-slate sm:text-[20px]">
+            <p className="mx-auto mt-5 max-w-[720px] text-[15px] leading-[1.45] font-medium text-pretty text-slate sm:mt-7 sm:text-[17px] sm:leading-[1.55] lg:text-[20px]">
               {t.hero.subtitle}
             </p>
 
-            <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
-              <PrimaryButton href={`/${locale}/demo`}>{t.hero.ctaPrimary}</PrimaryButton>
+            <div className="mt-7 flex items-center justify-center gap-2.5 sm:mt-9 sm:gap-3">
+              <PrimaryButton href={`/${locale}/demo`}>
+                <span className="sm:hidden">{t.hero.ctaPrimaryShort}</span>
+                <span className="hidden sm:inline">{t.hero.ctaPrimary}</span>
+              </PrimaryButton>
               <SecondaryButton href={`/${locale}#tableau-de-bord`}>{t.hero.ctaSecondary}</SecondaryButton>
             </div>
 
             {/* Honest claims about how the product works — never invented
                 customer counts (see PROOF in lib/content.ts). */}
-            <ul className="mt-9 flex flex-wrap justify-center gap-x-7 gap-y-2">
+            <ul className="mt-7 flex flex-wrap justify-center gap-x-5 gap-y-1.5 sm:mt-9 sm:gap-x-7 sm:gap-y-2">
               {t.hero.trust.map((item) => (
-                <li key={item} className="flex items-center gap-2 text-[16px] font-medium text-slate">
+                <li key={item} className="flex items-center gap-2 text-[13px] font-medium text-slate sm:text-[16px]">
                   <span aria-hidden="true" className="text-positive">
                     ✓
                   </span>
@@ -69,7 +72,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           </Reveal>
 
           {/* The whole product, fully visible — no fade cutting through it. */}
-          <Reveal delay={140} className="mx-auto mt-16 max-w-[1060px]">
+          <Reveal delay={140} distance="lg" className="mx-auto mt-10 max-w-[1060px] sm:mt-16">
             <DesktopMock locale={locale} />
           </Reveal>
         </div>
@@ -122,7 +125,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
         </Reveal>
         <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {t.features.items.map((item, i) => (
-            <Reveal key={item.title} delay={i * 60}>
+            <Reveal key={item.title} delay={i * 60} distance="sm">
               <article className="mkt-card-lg h-full">
                 <h3 className="mkt-h3">{item.title}</h3>
                 <p className="mt-3 text-[15px] leading-[1.6] text-slate">{item.body}</p>
@@ -144,7 +147,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
         <Reveal>
           <SectionHeading eyebrow={t.showcase.eyebrow} title={t.showcase.title} subtitle={t.showcase.subtitle} />
         </Reveal>
-        <Reveal delay={120} className="mx-auto mt-12 max-w-[1060px]">
+        <Reveal delay={120} distance="lg" className="mx-auto mt-12 max-w-[1060px]">
           <DesktopMock locale={locale} />
         </Reveal>
         <Reveal delay={160}>
@@ -167,7 +170,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
         </Reveal>
         <ol className="mt-12 grid gap-4 lg:grid-cols-3">
           {t.how.steps.map((step, i) => (
-            <Reveal key={step.n} delay={i * 90}>
+            <Reveal key={step.n} delay={i * 90} distance="sm">
               <li className="mkt-card-lg h-full bg-white">
                 <span className="text-[13px] font-semibold text-slate-muted">{step.n}</span>
                 <h3 className="mkt-h3 mt-4">{step.title}</h3>
@@ -185,7 +188,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
         </Reveal>
         <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {t.security.items.map((item, i) => (
-            <Reveal key={item.title} delay={i * 50}>
+            <Reveal key={item.title} delay={i * 50} distance="sm">
               <article className="mkt-card-lg h-full">
                 <h3 className="mkt-h3">{item.title}</h3>
                 <p className="mt-3 text-[15px] leading-[1.6] text-slate">{item.body}</p>
@@ -202,7 +205,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
         </Reveal>
         <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {t.audience.items.map((item, i) => (
-            <Reveal key={item.title} delay={i * 60}>
+            <Reveal key={item.title} delay={i * 60} distance="sm">
               <article className="mkt-card-lg h-full bg-white">
                 <h3 className="mkt-h3">{item.title}</h3>
                 <p className="mt-3 text-[15px] leading-[1.6] text-slate">{item.body}</p>

@@ -5,6 +5,10 @@ import clsx from 'clsx'
  * The template's two hero buttons, reproduced from measurement — not
  * approximated.
  *
+ * Both shrink on phones to the template's mobile figures — 49px tall,
+ * 16px label, 25px icon — which is what lets the pair sit on ONE row at
+ * 375px instead of stacking and pushing the product shot off-screen.
+ *
  * Primary ("Get started now"): 59px pill, fill is a BLUE GRADIENT
  * `linear-gradient(110deg, #3b82f6 0%, #406ae4 100%)`, white 18px/600
  * text, and a 44px WHITE CIRCLE on the right holding the arrow. On hover
@@ -21,7 +25,7 @@ export function PrimaryButton({ href, children, className }: { href: string; chi
     <Link
       href={href}
       className={clsx(
-        'group inline-flex h-[59px] items-center gap-3 rounded-[100px] py-1.5 pr-1.5 pl-7 text-[18px] font-semibold text-white transition-[filter,transform] duration-300 hover:brightness-105 active:scale-[0.98]',
+        'group inline-flex h-[49px] items-center gap-2 rounded-[100px] py-1.5 pr-1.5 pl-5 text-[16px] font-semibold text-white transition-[filter,transform] duration-300 hover:brightness-105 active:scale-[0.98] sm:h-[59px] sm:gap-3 sm:pl-7 sm:text-[18px]',
         className,
       )}
       style={{ backgroundImage: 'linear-gradient(110deg, #3b82f6 0%, #406ae4 100%)' }}
@@ -29,7 +33,7 @@ export function PrimaryButton({ href, children, className }: { href: string; chi
       <span>{children}</span>
       <span
         aria-hidden="true"
-        className="grid size-11 shrink-0 place-items-center rounded-full bg-white text-[#3b82f6] transition-transform duration-300 group-hover:translate-x-0.5"
+        className="grid size-9 shrink-0 place-items-center rounded-full bg-white text-[#3b82f6] transition-transform duration-300 group-hover:translate-x-0.5 sm:size-11"
       >
         <svg
           viewBox="0 0 16 16"
@@ -54,7 +58,7 @@ export function SecondaryButton({ href, children, className }: { href: string; c
     <Link
       href={href}
       className={clsx(
-        'group inline-flex h-[59px] items-center justify-center overflow-clip rounded-[100px] bg-white px-11 text-[18px] font-semibold text-ink shadow-[0_1px_2px_rgba(29,29,29,0.06)] transition-colors hover:bg-[#f6f8fa]',
+        'group inline-flex h-[49px] items-center justify-center overflow-clip rounded-[100px] bg-white px-6 text-[16px] font-semibold text-ink shadow-[0_1px_2px_rgba(29,29,29,0.06)] transition-colors hover:bg-[#f6f8fa] sm:h-[59px] sm:px-11 sm:text-[18px]',
         className,
       )}
     >
