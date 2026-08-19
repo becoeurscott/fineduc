@@ -624,6 +624,12 @@ export function contentFor(locale: Locale) {
   return CONTENT[locale]
 }
 
-/** Contact channel — WhatsApp is how these buyers actually get in touch (PRD §8). */
-export const WHATSAPP_NUMBER = '237600000000'
+/**
+ * Contact channel — WhatsApp is how these buyers actually get in touch (PRD §8).
+ *
+ * E.164 digits only, no `+` and no leading zeros: that is the form wa.me
+ * expects, and anything else silently lands the visitor on an error page
+ * rather than in a chat.
+ */
+export const WHATSAPP_NUMBER = '12149303696'
 export const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}`
