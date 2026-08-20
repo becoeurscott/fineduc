@@ -74,3 +74,17 @@ export {
   formatReceiptNumber,
 } from './cashbox/session.js'
 export type { CashSessionStatus, CashMovementType, CashMovement, CloseResult } from './cashbox/session.js'
+
+// Messaging (ARCHITECTURE.md §8.5)
+export {
+  decideEligibility,
+  isInstalmentSettled,
+  withinSendingHours,
+  resolveChannel,
+  DEFAULT_QUIET_HOURS,
+  DEFAULT_GUARDIAN_DAILY_CAP,
+} from './messaging/eligibility.js'
+export type { EligibilityDecision, SendContext, SkipReason, DeferReason } from './messaging/eligibility.js'
+
+export { render, placeholdersIn, assertTemplateSatisfiable, smsSegments } from './messaging/render.js'
+export type { RenderResult } from './messaging/render.js'
