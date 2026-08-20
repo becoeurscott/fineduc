@@ -26,12 +26,20 @@ import clsx from 'clsx'
  */
 
 /**
- * Hysteresis: flip to "after" once the card's top passes 35% of the
- * viewport, back to "before" only below 50%. Without the gap, a card
- * parked near the threshold strobes on every scroll tick.
+ * The flip is keyed to the END of the card, not its top.
+ *
+ * On a phone the card is taller than the screen — 893px against 812px —
+ * so a top-based trigger fired 365px before the reader had finished the
+ * "before" list, swapping the argument out from under them mid-sentence.
+ * Waiting for the card's bottom edge to come into view means the switch
+ * lands exactly when they reach the end of the case being made.
+ *
+ * Expressed against the viewport bottom so it reads the same at any
+ * height. The gap between the two values is hysteresis: without it a card
+ * resting on the threshold strobes on every scroll tick.
  */
-const FLIP_TO_AFTER = 0.35
-const FLIP_TO_BEFORE = 0.5
+const FLIP_TO_AFTER = 1
+const FLIP_TO_BEFORE = 1.15
 type Stat = { readonly value: string; readonly label: string }
 type Item = { readonly title: string; readonly body: string }
 
@@ -63,8 +71,8 @@ export function BeforeAfter({
     const read = () => {
       frame = 0
       if (takenOver.current) return
-      const top = node.getBoundingClientRect().top / window.innerHeight
-      setShowAfter((current) => (current ? top <= FLIP_TO_BEFORE : top < FLIP_TO_AFTER))
+      const bottom = node.getBoundingClientRect().bottom / window.innerHeight
+      setShowAfter((current) => (current ? bottom <= FLIP_TO_BEFORE : bottom <= FLIP_TO_AFTER))
     }
     const onScroll = () => {
       // Coalesce to one read per frame — scroll fires far faster than paint.
@@ -117,8 +125,11 @@ export function BeforeAfter({
       {/* white hairline, measured */}
       <div aria-hidden="true" className="mx-auto my-7 h-px w-full max-w-[500px] bg-white/60" />
 
-      {/* body — both states stacked, the active one visible */}
-      <div className="relative">
+      {/* Body — both states in ONE grid cell, so the card is always as tall
+          as the taller of the two. Sizing it to whichever state is active
+          would move the card's bottom edge at the moment of the flip, and
+          the flip is triggered off that edge: it would undo itself. */}
+      <div className="grid">
         {[
           { key: 'before', items: before, stats: beforeStats, active: !showAfter },
           { key: 'after', items: after, stats: afterStats, active: showAfter },
@@ -127,10 +138,8 @@ export function BeforeAfter({
             key={state.key}
             aria-hidden={!state.active}
             className={clsx(
-              'grid gap-6 transition-all duration-500 ease-out lg:grid-cols-[1fr_auto] lg:gap-8',
-              state.active
-                ? 'relative translate-y-0 opacity-100'
-                : 'pointer-events-none absolute inset-0 translate-y-2 opacity-0',
+              '[grid-area:1/1] grid gap-6 transition-all duration-500 ease-out lg:grid-cols-[1fr_auto] lg:gap-8',
+              state.active ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-2 opacity-0',
             )}
           >
             <ul className="space-y-4">
