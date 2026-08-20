@@ -19,5 +19,8 @@ export type { IngestOutcome } from './payments/webhook-ingest.service.js'
 export { WebhookProcessorService } from './payments/webhook-processor.service.js'
 export type { ProcessOutcome } from './payments/webhook-processor.service.js'
 
+export { encodePaymentReference, decodePaymentReference } from './payments/payment-reference.js'
+export type { PaymentReference } from './payments/payment-reference.js'
+
 export { consoleLogger } from './logger.js'
 export type { Logger } from './logger.js'

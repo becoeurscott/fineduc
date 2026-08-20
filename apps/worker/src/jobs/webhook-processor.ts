@@ -2,7 +2,12 @@ import { Worker, type Job } from 'bullmq'
 import type { Redis } from 'ioredis'
 import { createPrismaClient, resolveAppDatabaseUrl, withTenant, type PrismaClient } from '@fineduc/db'
 import { loadEnv } from '@fineduc/config'
-import { SettlementService, WebhookProcessorService, consoleLogger } from '@fineduc/services'
+import {
+  SettlementService,
+  WebhookProcessorService,
+  consoleLogger,
+  decodePaymentReference,
+} from '@fineduc/services'
 import type { PaymentProvider } from '@fineduc/providers'
 import { QUEUE_SPECS, queueOptions, type JobEnvelope } from '../queues/index.js'
 
@@ -20,7 +25,14 @@ import { QUEUE_SPECS, queueOptions, type JobEnvelope } from '../queues/index.js'
  * the job runner being careful.
  */
 
-export interface WebhookJobData extends JobEnvelope {
+/**
+ * NOTE: no `tenantId` on the envelope.
+ *
+ * At ingest the tenant is genuinely unknown — that is why `provider_event`
+ * carries no RLS — so the API cannot put one here honestly. It is resolved
+ * below, from the reference the aggregator echoed back.
+ */
+export interface WebhookJobData extends Omit<JobEnvelope, 'tenantId'> {
   /** The stored `provider_event.id` — the payload is read from the row, not the job. */
   readonly providerEventId: string
   readonly provider: string
@@ -45,7 +57,7 @@ export function createWebhookProcessor(deps: WebhookProcessorDeps): Worker<Webho
   return new Worker<WebhookJobData>(
     'webhook-processor',
     async (job: Job<WebhookJobData>) => {
-      const { providerEventId, provider: providerName, tenantId } = job.data
+      const { providerEventId, provider: providerName } = job.data
 
       // `provider_event` carries no RLS by design — the tenant is unknown
       // until the payload is parsed — so it is read outside a tenant context
@@ -64,6 +76,22 @@ export function createWebhookProcessor(deps: WebhookProcessorDeps): Worker<Webho
 
       const provider = deps.resolveProvider(providerName)
       const event = provider.parseWebhook(stored.payload)
+
+      // The tenant comes from OUR reference, echoed back by the aggregator.
+      // Nothing else can supply it: `payment` is tenant-scoped, so looking it
+      // up by provider_ref would already need the context we are trying to
+      // establish.
+      const reference = decodePaymentReference(event.reference)
+      if (!reference) {
+        // Fails LOUDLY (ARCHITECTURE.md §11). A callback we cannot attribute
+        // is either not ours or is a reference bug; settling it against a
+        // guessed tenant would be far worse than a job in the dead letter
+        // queue with an alert on it.
+        throw new Error(
+          `Cannot resolve a tenant for provider_event ${providerEventId}: reference "${event.reference ?? ''}" is not one of ours`,
+        )
+      }
+      const { tenantId } = reference
 
       const outcome = await withTenant(prisma, tenantId, (tx) =>
         processor.process(tx, tenantId, event, { now: new Date() }),

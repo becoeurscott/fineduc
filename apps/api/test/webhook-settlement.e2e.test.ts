@@ -34,6 +34,7 @@ let processor: Any
 let ingest: Any
 let FakeProvider: Any
 let Money: Any
+let encodeRef: Any
 
 const NOW = new Date('2026-09-20T10:00:00Z')
 
@@ -171,6 +172,9 @@ function event(f: Fixture, over: Record<string, unknown> = {}) {
   return {
     eventId: randomUUID(),
     providerRef: f.providerRef,
+    // OUR reference, echoed back by the aggregator. It is what lets the
+    // worker resolve a tenant for a callback that arrives with none.
+    reference: encodeRef({ tenantId: f.tenantId, paymentId: f.paymentId }),
     status: 'succeeded',
     paidAmount: Money.of(120_000n, 'XAF'),
     occurredAt: NOW,
@@ -193,6 +197,7 @@ describe('Mobile money settlement (real Postgres)', () => {
     // These live in @fineduc/services, not apps/api — apps/worker runs them
     // too, and apps may never import each other.
     const services = await import('@fineduc/services')
+    encodeRef = services.encodePaymentReference
     invoicing = new inv.InvoicingService()
     processor = new services.WebhookProcessorService(new services.SettlementService())
     ingest = new services.WebhookIngestService()

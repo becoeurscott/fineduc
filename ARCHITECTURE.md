@@ -398,6 +398,12 @@ Guardian taps the link in the WhatsApp reminder
 
   ── the browser redirect is a HINT. It is never trusted. ──
 
+  ── our `reference` is `fd:<tenantId>:<paymentId>` and the aggregator echoes it back.
+     It is the ONLY way the worker can attribute a callback: `provider_event`
+     carries no RLS (the tenant is unknown until the payload is parsed), and
+     `payment` IS tenant-scoped, so looking the tenant up from provider_ref
+     would already need the context we are trying to establish. ──
+
   → POST /webhooks/payments/:provider     (public, signature-verified)
       1. verify HMAC signature; reject and alert on failure
       2. INSERT INTO provider_event (unique on provider+event_id)

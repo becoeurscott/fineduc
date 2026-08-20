@@ -19,7 +19,10 @@ import { loadEnv } from '@fineduc/config'
 const QUEUE_NAME = 'webhook-processor'
 
 export interface WebhookJobPayload {
-  readonly tenantId: string
+  /**
+   * Deliberately no tenantId: at ingest it is unknown, and the worker
+   * resolves it from the reference the aggregator echoed back.
+   */
   readonly requestId: string
   readonly providerEventId: string
   readonly provider: string

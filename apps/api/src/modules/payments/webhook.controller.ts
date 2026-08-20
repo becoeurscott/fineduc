@@ -67,8 +67,10 @@ export class PaymentWebhookController {
       case 'accepted':
         // Hand off and return. The settlement happens in apps/worker; this
         // request must not wait for it.
+        // No tenantId: at this point it is genuinely unknown, and the
+        // worker resolves it from the reference the aggregator echoed back.
+        // Passing an empty string would have thrown inside withTenant.
         await this.queue.enqueue({
-          tenantId: '',
           requestId: (headers['x-request-id'] as string | undefined) ?? '',
           providerEventId: outcome.providerEventId,
           provider: providerName,
