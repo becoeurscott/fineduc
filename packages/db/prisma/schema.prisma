@@ -986,7 +986,10 @@ model PaymentLink {
   studentId            String    @map("student_id") @db.Uuid
   invoiceId            String    @map("invoice_id") @db.Uuid
   instalmentId         String?   @map("instalment_id") @db.Uuid
-  /// 32 random bytes, base64url. Single-purpose, expiring, unguessable.
+  /// `<tenantId>.<32 random bytes, base64url>`. Single-purpose, expiring,
+  /// unguessable. The tenant half is what lets the PUBLIC /pay/:token route
+  /// find the row at all — this table is RLS-protected and that request has
+  /// no tenant context (see packages/services/src/payments/pay-link-token.ts).
   token                String    @unique
   suggestedAmountMinor BigInt?   @map("suggested_amount_minor")
   minAmountMinor       BigInt?   @map("min_amount_minor")

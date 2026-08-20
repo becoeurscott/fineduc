@@ -119,3 +119,54 @@ export const CloseCashSessionInputSchema = z
 export type CloseCashSessionInput = z.infer<typeof CloseCashSessionInputSchema>
 
 export type PaymentQuery = z.infer<typeof PaymentQuerySchema>
+
+/* ------------------------------------------------------------ payment link
+ * The PUBLIC pay page (ARCHITECTURE.md §8.2). No authentication, hostile
+ * territory, and the payer is a parent on a phone with a bad connection.
+ */
+
+export const PaymentOperatorSchema = z.enum(['mtn', 'orange', 'moov', 'wave', 'card'])
+export type PaymentOperator = z.infer<typeof PaymentOperatorSchema>
+
+/**
+ * What the pay page shows. Deliberately thin: enough for a parent to be sure
+ * they are paying for the right child at the right school, and nothing an
+ * onward-forwarded link should not carry.
+ */
+export const PayLinkViewSchema = z.object({
+  schoolName: z.string(),
+  studentName: z.string(),
+  className: z.string(),
+  /** What is still owed on the whole invoice. */
+  balance: MoneySchema,
+  /** What this particular link is for — a named tranche, or the balance. */
+  suggestedAmount: MoneySchema,
+  minAmount: MoneySchema,
+  instalmentLabel: z.string().nullable(),
+  expiresAt: IsoDateTimeSchema,
+  operators: z.array(PaymentOperatorSchema),
+})
+export type PayLinkView = z.infer<typeof PayLinkViewSchema>
+
+/**
+ * `idempotencyKey` is REQUIRED (rule #5). A parent on a failing connection
+ * will tap twice, and the contract is where that stops being possible.
+ */
+export const InitiatePayLinkSchema = z.object({
+  amount: MoneySchema,
+  operator: PaymentOperatorSchema,
+  /** E.164. The phone that will get the PIN prompt. */
+  payerPhoneE164: z.string().regex(/^\+[1-9]\d{7,14}$/, 'must be an E.164 phone number'),
+  payerName: z.string().max(120).optional(),
+  idempotencyKey: z.string().uuid(),
+})
+export type InitiatePayLink = z.infer<typeof InitiatePayLinkSchema>
+
+export const InitiatePayLinkResultSchema = z.object({
+  paymentId: UuidSchema,
+  /** Present when the provider hosts a page; absent when it pushed a prompt. */
+  checkoutUrl: z.string().url().nullable(),
+  pushSent: z.boolean(),
+  status: PaymentStatusSchema,
+})
+export type InitiatePayLinkResult = z.infer<typeof InitiatePayLinkResultSchema>
