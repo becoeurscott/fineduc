@@ -5,17 +5,12 @@ import {
   ConflictError,
   NotFoundError,
   ValidationError,
-  allocatePayment,
-  applyAllocations,
   assertSessionOpen,
   formatReceiptNumber,
   initialStatus,
-  instalmentStatus,
-  post,
-  projectInvoice,
   toTenantDate,
-  type AllocatableInstalment,
 } from '@fineduc/domain'
+import { SettlementService } from '../payments/settlement.service.js'
 
 /**
  * Cash at the desk (ARCHITECTURE.md §8.3) — the flow that makes the product
@@ -63,6 +58,8 @@ export interface CashPaymentResult {
 
 @Injectable()
 export class CashPaymentService {
+  constructor(private readonly settlement: SettlementService) {}
+
   async record(
     tx: TenantTransactionClient,
     tenantId: string,
@@ -106,40 +103,16 @@ export class CashPaymentService {
     }
     assertSessionOpen(session)
 
-    // ---- 3. the invoice, locked ------------------------------------------
-    const invoiceId = await this.lockCurrentInvoice(tx, tenantId, params.studentId)
-
-    const invoice = await tx.invoice.findUnique({
-      where: { id: invoiceId },
-      include: { instalments: true },
-    })
-    if (!invoice) throw new NotFoundError('invoice', invoiceId)
-    if (invoice.status === 'cancelled') {
-      throw new ConflictError('INVOICE_CANCELLED', 'This invoice is cancelled and cannot take a payment.')
-    }
-
+    // ---- 3. the payment row ---------------------------------------------
+    // Created BEFORE settling, because allocations reference it.
+    const invoiceId = await this.settlement.lockCurrentInvoice(tx, tenantId, params.studentId)
     const today = toTenantDate(params.now, await this.timezoneOf(tx, tenantId))
 
-    const allocatable: AllocatableInstalment[] = invoice.instalments.map((i) => ({
-      id: i.id,
-      sequence: i.sequence,
-      dueOn: this.date(i.dueOn),
-      amountMinor: i.amountMinor,
-      allocatedMinor: i.allocatedMinor,
-      status: i.status,
-    }))
-
-    const { allocations, unallocatedMinor } = allocatePayment(amount, allocatable, {
-      onlyInstalmentId: params.instalmentId,
-    })
-    const allocatedMinor = allocations.reduce((sum, a) => sum + a.amountMinor, 0n)
-
-    // ---- 4. the payment ---------------------------------------------------
     const payment = await tx.payment.create({
       data: {
         tenantId,
         studentId: params.studentId,
-        invoiceId: invoice.id,
+        invoiceId,
         method: 'cash',
         amountMinor: amount.amount,
         currency,
@@ -153,73 +126,16 @@ export class CashPaymentService {
       },
     })
 
-    for (const allocation of allocations) {
-      await tx.paymentAllocation.create({
-        data: {
-          tenantId,
-          paymentId: payment.id,
-          instalmentId: allocation.instalmentId,
-          amountMinor: allocation.amountMinor,
-        },
-      })
-    }
-
-    // ---- 5. projections, in the same transaction as the ledger below ------
-    for (const updated of applyAllocations(allocatable, allocations)) {
-      const source = allocatable.find((i) => i.id === updated.id) as AllocatableInstalment
-      await tx.instalment.update({
-        where: { id: updated.id },
-        data: {
-          allocatedMinor: updated.allocatedMinor,
-          status: instalmentStatus(
-            { amountMinor: source.amountMinor, allocatedMinor: updated.allocatedMinor, dueOn: source.dueOn },
-            today,
-          ),
-        },
-      })
-    }
-
-    const projected = projectInvoice(invoice.netMinor, invoice.paidMinor + allocatedMinor)
-    await tx.invoice.update({
-      where: { id: invoice.id },
-      data: {
-        paidMinor: projected.paidMinor,
-        balanceMinor: projected.balanceMinor,
-        status: projected.status,
-      },
+    // ---- 4-6. allocate, project, post — shared with the aggregator path ---
+    const settled = await this.settlement.settle(tx, tenantId, currency, {
+      paymentId: payment.id,
+      studentId: params.studentId,
+      amount,
+      instalmentId: params.instalmentId,
+      occurredOn: today,
+      memo: params.payerName ? `Espèces — ${params.payerName}` : 'Espèces',
+      reminderSkipReason: 'Paid in cash at the desk',
     })
-
-    // ---- 6. ledger --------------------------------------------------------
-    // Only what was ALLOCATED reduces the debt. An overpayment is money the
-    // school holds, not a debt reduction, and posting it as one would show a
-    // negative balance the ledger cannot explain.
-    if (allocatedMinor > 0n) {
-      const opening = await this.openingBalance(tx, tenantId, params.studentId, currency)
-      const { entry } = post(opening, {
-        entryType: 'payment',
-        amount: Money.of(allocatedMinor, currency),
-        sourceType: 'payment',
-        sourceId: payment.id,
-        occurredOn: today,
-        invoiceId: invoice.id,
-        memo: params.payerName ? `Espèces — ${params.payerName}` : 'Espèces',
-      })
-      await tx.studentLedgerEntry.create({
-        data: {
-          tenantId,
-          studentId: params.studentId,
-          invoiceId: entry.invoiceId ?? null,
-          instalmentId: null,
-          entryType: entry.entryType,
-          amountMinor: entry.amountMinor,
-          balanceAfterMinor: entry.balanceAfterMinor,
-          sourceType: entry.sourceType,
-          sourceId: entry.sourceId,
-          occurredOn: new Date(entry.occurredOn),
-          memo: entry.memo ?? null,
-        },
-      })
-    }
 
     // ---- 7. receipt, gapless ---------------------------------------------
     const receiptNumber = formatReceiptNumber(
@@ -242,18 +158,6 @@ export class CashPaymentService {
       },
     })
 
-    // ---- 9. stop reminding a family that has just paid --------------------
-    // Rule #7 puts the final decision in the sender, but cancelling here
-    // keeps a queued reminder from being sent in the seconds before the
-    // sender next re-checks.
-    const settled = allocations.map((a) => a.instalmentId)
-    if (settled.length > 0) {
-      await tx.reminderSchedule.updateMany({
-        where: { tenantId, instalmentId: { in: settled }, status: 'scheduled' },
-        data: { status: 'cancelled', skipReason: `Paid — receipt ${receiptNumber}` },
-      })
-    }
-
     await tx.outboxEvent.create({
       data: {
         tenantId,
@@ -263,11 +167,11 @@ export class CashPaymentService {
         payload: {
           paymentId: payment.id,
           studentId: params.studentId,
-          invoiceId: invoice.id,
+          invoiceId: settled.invoiceId,
           method: 'cash',
           amountMinor: amount.amount.toString(),
-          allocatedMinor: allocatedMinor.toString(),
-          unallocatedMinor: unallocatedMinor.toString(),
+          allocatedMinor: settled.allocatedMinor.toString(),
+          unallocatedMinor: settled.unallocatedMinor.toString(),
           receiptNumber,
           currency,
         },
@@ -277,42 +181,11 @@ export class CashPaymentService {
     return {
       paymentId: payment.id,
       receiptNumber,
-      allocatedMinor,
-      unallocatedMinor,
-      invoiceBalanceMinor: projected.balanceMinor,
+      allocatedMinor: settled.allocatedMinor,
+      unallocatedMinor: settled.unallocatedMinor,
+      invoiceBalanceMinor: settled.balanceMinor,
       replayed: false,
     }
-  }
-
-  /**
-   * Lock the student's current invoice row before reading its instalments.
-   *
-   * `SELECT ... FOR UPDATE` in raw SQL because Prisma has no way to express
-   * it. Without this, two cashiers serving the same family at once both read
-   * the same `allocatedMinor` and both allocate against it, and the invoice
-   * ends up over-allocated with no error anywhere.
-   */
-  private async lockCurrentInvoice(
-    tx: TenantTransactionClient,
-    tenantId: string,
-    studentId: string,
-  ): Promise<string> {
-    const rows = await tx.$queryRaw<{ id: string }[]>`
-      SELECT i.id
-      FROM invoice i
-      JOIN enrollment e ON e.id = i.enrollment_id
-      WHERE i.tenant_id = ${tenantId}::uuid
-        AND e.student_id = ${studentId}::uuid
-        AND i.status <> 'cancelled'
-      ORDER BY i.issued_on DESC
-      LIMIT 1
-      FOR UPDATE OF i
-    `
-    const id = rows[0]?.id
-    if (!id) {
-      throw new NotFoundError('invoice', `for student ${studentId}`)
-    }
-    return id
   }
 
   /**
@@ -342,23 +215,6 @@ export class CashPaymentService {
       throw new ConflictError('RECEIPT_COUNTER_FAILED', 'Could not obtain a receipt number.')
     }
     return Number(next)
-  }
-
-  private async openingBalance(
-    tx: TenantTransactionClient,
-    tenantId: string,
-    studentId: string,
-    currency: CurrencyCode,
-  ): Promise<Money> {
-    const last = await tx.studentLedgerEntry.findFirst({
-      where: { tenantId, studentId },
-      orderBy: [{ occurredOn: 'desc' }, { createdAt: 'desc' }],
-    })
-    return Money.of(last?.balanceAfterMinor ?? 0n, currency)
-  }
-
-  private date(value: Date): string {
-    return value.toISOString().slice(0, 10)
   }
 
   private async currencyOf(tx: TenantTransactionClient, tenantId: string): Promise<CurrencyCode> {

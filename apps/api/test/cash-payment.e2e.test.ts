@@ -179,8 +179,12 @@ describe('Cash at the desk (real Postgres)', () => {
     const inv = await import('../dist/modules/billing/invoicing.service.js')
     const cp = await import('../dist/modules/cashbox/cash-payment.service.js')
     const cs = await import('../dist/modules/cashbox/cash-session.service.js')
+    const st = await import('../dist/modules/payments/settlement.service.js')
     invoicing = new inv.InvoicingService()
-    cashPayments = new cp.CashPaymentService()
+    // Allocation, projections and the ledger entry are shared with the
+    // aggregator path — the cash service composes that service rather than
+    // keeping a second copy of the same money logic.
+    cashPayments = new cp.CashPaymentService(new st.SettlementService())
     cashSessions = new cs.CashSessionService()
     prisma = db.createPrismaClient({
       databaseUrl: db.resolveAppDatabaseUrl(process.env.DATABASE_URL as string, process.env.APP_DATABASE_URL),

@@ -17,6 +17,9 @@ corrupt each other's fixtures.
 | 100 000 XAF split three ways re-sums to 100 000 | `packages/domain/src/billing/instalments.test.ts` |
 | One tenant cannot READ another's invoice by its real id | `enrollment-invoice.e2e.test.ts` |
 | Money leaves the API as an integer string, never a number | `enrollment-invoice.e2e.test.ts` |
+| A webhook delivered twice settles ONCE | `webhook-settlement.e2e.test.ts` |
+| A late `failed` after settlement is dropped, not applied | `webhook-settlement.e2e.test.ts` |
+| An unsigned or forged webhook is rejected and NOT stored | `webhook-settlement.e2e.test.ts` |
 | A double-tapped payment settles ONCE | `cash-payment.e2e.test.ts` |
 | Concurrent allocation does not over-allocate | `cash-payment.e2e.test.ts` |
 | Receipt numbers are gapless, even across a rollback | `cash-payment.e2e.test.ts` |
@@ -25,8 +28,6 @@ corrupt each other's fixtures.
 
 ## Still owed
 
-- A webhook delivered twice settles once (phase 6 — the cash double-tap
-  case is covered; the aggregator path is not).
 - No reminder for an instalment paid between scheduling and sending
   (phase 7).
 - A log fixture contains no phone number.

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common'
 import { PlatformModule } from '../platform/platform.module.js'
+import { PaymentsModule } from '../payments/payments.module.js'
 import { CashSessionService } from './cash-session.service.js'
 import { CashPaymentService } from './cash-payment.service.js'
 import { CashController } from './cash.controller.js'
@@ -11,7 +12,7 @@ import { CashController } from './cash.controller.js'
  * modules go through these services; nothing reaches into those tables.
  */
 @Module({
-  imports: [PlatformModule],
+  imports: [PlatformModule, PaymentsModule],
   controllers: [CashController],
   providers: [CashSessionService, CashPaymentService],
   exports: [CashSessionService, CashPaymentService],
