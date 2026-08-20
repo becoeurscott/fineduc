@@ -15,6 +15,8 @@ corrupt each other's fixtures.
 | `sum(instalment) == invoice.net` on PERSISTED rows | `enrollment-invoice.e2e.test.ts` |
 | One tenant cannot see another's invoice/ledger | `enrollment-invoice.e2e.test.ts` |
 | 100 000 XAF split three ways re-sums to 100 000 | `packages/domain/src/billing/instalments.test.ts` |
+| One tenant cannot READ another's invoice by its real id | `enrollment-invoice.e2e.test.ts` |
+| Money leaves the API as an integer string, never a number | `enrollment-invoice.e2e.test.ts` |
 | DI resolves for real (the tsx/esbuild trap) | `health.e2e.test.ts` |
 
 ## Still owed

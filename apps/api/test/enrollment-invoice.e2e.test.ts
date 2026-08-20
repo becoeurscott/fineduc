@@ -34,6 +34,7 @@ let prisma: Any
 let withTenant: Any
 let InvoicingService: Any
 let service: Any
+let reader: Any
 
 const USER_ID = randomUUID()
 
@@ -174,6 +175,8 @@ describe('Enrolment raises an invoice (real Postgres)', () => {
     withTenant = db.withTenant
     InvoicingService = billing.InvoicingService
     service = new InvoicingService()
+    const queries = await import('../dist/modules/billing/invoice-query.service.js')
+    reader = new queries.InvoiceQueryService()
     // The least-privilege `fineduc_app` role, exactly as the API connects.
     // Using the owner role here would make RLS silently no-op and the
     // cross-tenant assertion below would pass for the wrong reason.
@@ -326,4 +329,62 @@ describe('Enrolment raises an invoice (real Postgres)', () => {
     const summed = instalments.reduce((sum: bigint, i: Any) => sum + i.amountMinor, 0n)
     expect(summed).toBe(225_000n)
   })
+
+  describe('reading it back', () => {
+    it('serialises every amount as an integer string, never a number', async () => {
+      const invoice = await withTenant(prisma, fixture.tenantId, (tx: Any) =>
+        reader.getInvoiceForEnrollment(tx, fixture.tenantId, fixture.enrollmentId),
+      )
+
+      for (const money of [invoice.total, invoice.discount, invoice.net, invoice.paid, invoice.balance]) {
+        expect(typeof money.amountMinor).toBe('string')
+        expect(money.currency).toBe('XAF')
+      }
+      expect(invoice.net.amountMinor).toBe('250000')
+      // XAF has ZERO decimals — a franc is a whole minor unit, never /100.
+      expect(invoice.net.amountMinor).not.toContain('.')
+    })
+
+    it('returns instalments in sequence whose remaining sums to the balance', async () => {
+      const invoice = await withTenant(prisma, fixture.tenantId, (tx: Any) =>
+        reader.getInvoiceForEnrollment(tx, fixture.tenantId, fixture.enrollmentId),
+      )
+
+      expect(invoice.instalments.map((i: Any) => i.sequence)).toEqual([1, 2, 3])
+      const remaining = invoice.instalments.reduce((sum: bigint, i: Any) => sum + BigInt(i.remaining.amountMinor), 0n)
+      expect(remaining).toBe(BigInt(invoice.balance.amountMinor))
+    })
+
+    it('carries the student and class through for the invoice header', async () => {
+      const invoice = await withTenant(prisma, fixture.tenantId, (tx: Any) =>
+        reader.getInvoiceForEnrollment(tx, fixture.tenantId, fixture.enrollmentId),
+      )
+      expect(invoice.studentId).toBe(fixture.studentId)
+      expect(invoice.className).toBe('Class A')
+      expect(invoice.lines).toHaveLength(2)
+      expect(invoice.lines[0].lineTotal.amountMinor).toBe('200000')
+    })
+
+    it('reports a statement whose balance matches the last ledger entry', async () => {
+      const statement = await withTenant(prisma, fixture.tenantId, (tx: Any) =>
+        reader.getStatement(tx, fixture.tenantId, fixture.studentId),
+      )
+      expect(statement.balance.amountMinor).toBe('250000')
+      expect(statement.entries.length).toBeGreaterThan(0)
+      const last = statement.entries[statement.entries.length - 1]
+      expect(last.balanceAfter.amountMinor).toBe(statement.balance.amountMinor)
+    })
+
+    it('refuses to read another tenant invoice even by its real id', async () => {
+      const invoice = await withTenant(prisma, fixture.tenantId, (tx: Any) =>
+        reader.getInvoiceForEnrollment(tx, fixture.tenantId, fixture.enrollmentId),
+      )
+      const intruder = await seedTenant('X')
+
+      await expect(
+        withTenant(prisma, intruder.tenantId, (tx: Any) => reader.getInvoice(tx, intruder.tenantId, invoice.id)),
+      ).rejects.toThrow(/invoice/)
+    })
+  })
+
 })

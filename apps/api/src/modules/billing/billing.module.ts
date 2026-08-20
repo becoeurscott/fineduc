@@ -3,6 +3,8 @@ import { PlatformModule } from '../platform/platform.module.js'
 import { InvoicingService } from './invoicing.service.js'
 import { FeeScheduleService } from './fee-schedule.service.js'
 import { FeeScheduleController } from './fee-schedule.controller.js'
+import { InvoiceQueryService } from './invoice-query.service.js'
+import { InvoiceController, StatementController } from './invoice.controller.js'
 
 /**
  * Billing — the money owed (ARCHITECTURE.md §7, §8.1).
@@ -13,8 +15,8 @@ import { FeeScheduleController } from './fee-schedule.controller.js'
  */
 @Module({
   imports: [PlatformModule],
-  controllers: [FeeScheduleController],
-  providers: [InvoicingService, FeeScheduleService],
-  exports: [InvoicingService, FeeScheduleService],
+  controllers: [FeeScheduleController, InvoiceController, StatementController],
+  providers: [InvoicingService, FeeScheduleService, InvoiceQueryService],
+  exports: [InvoicingService, FeeScheduleService, InvoiceQueryService],
 })
 export class BillingModule {}
