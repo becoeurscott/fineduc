@@ -20,6 +20,7 @@ corrupt each other's fixtures.
 | A webhook delivered twice settles ONCE | `webhook-settlement.e2e.test.ts` |
 | A late `failed` after settlement is dropped, not applied | `webhook-settlement.e2e.test.ts` |
 | An unsigned or forged webhook is rejected and NOT stored | `webhook-settlement.e2e.test.ts` |
+| The webhook endpoint verifies the RAW bytes, not a re-parse | `webhook-endpoint.e2e.test.ts` |
 | A double-tapped payment settles ONCE | `cash-payment.e2e.test.ts` |
 | Concurrent allocation does not over-allocate | `cash-payment.e2e.test.ts` |
 | Receipt numbers are gapless, even across a rollback | `cash-payment.e2e.test.ts` |

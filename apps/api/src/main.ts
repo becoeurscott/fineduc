@@ -19,6 +19,30 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { bodyParser: false })
 
   app.use(helmet())
+
+  /*
+   * Webhook routes get the RAW bytes, and must be mounted BEFORE
+   * express.json() — once the JSON parser has consumed the stream the exact
+   * bytes the aggregator signed are gone, and re-serialising the parsed
+   * object changes them (key order, whitespace), so every HMAC check fails.
+   *
+   * Rate-limited by IP separately from auth: the endpoint is public and
+   * unauthenticated, so it is the cheapest thing on the box to hammer.
+   * The limit is generous because a busy school plus an aggregator's retry
+   * storm is legitimately bursty.
+   */
+  app.use(
+    '/webhooks',
+    rateLimit({
+      windowMs: 60 * 1000,
+      max: 120,
+      standardHeaders: true,
+      legacyHeaders: false,
+      message: { type: 'https://fineduc.com/errors/TOO_MANY_REQUESTS', title: 'Too Many Requests', status: 429 },
+    }),
+    express.raw({ type: '*/*', limit: '1mb' }),
+  )
+
   app.use(express.json({ limit: '1mb' }))
   app.use(express.urlencoded({ extended: true, limit: '1mb' }))
 

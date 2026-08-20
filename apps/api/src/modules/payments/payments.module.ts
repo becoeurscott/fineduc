@@ -3,6 +3,8 @@ import { PlatformModule } from '../platform/platform.module.js'
 import { SettlementService } from './settlement.service.js'
 import { WebhookIngestService } from './webhook.service.js'
 import { WebhookProcessorService } from './webhook-processor.service.js'
+import { PaymentProviderRegistry } from './provider.registry.js'
+import { PaymentWebhookController } from './webhook.controller.js'
 
 /**
  * Payments — settling money against an invoice, whichever rail it arrived on
@@ -14,7 +16,8 @@ import { WebhookProcessorService } from './webhook-processor.service.js'
  */
 @Module({
   imports: [PlatformModule],
-  providers: [SettlementService, WebhookIngestService, WebhookProcessorService],
-  exports: [SettlementService, WebhookIngestService, WebhookProcessorService],
+  controllers: [PaymentWebhookController],
+  providers: [SettlementService, WebhookIngestService, WebhookProcessorService, PaymentProviderRegistry],
+  exports: [SettlementService, WebhookIngestService, WebhookProcessorService, PaymentProviderRegistry],
 })
 export class PaymentsModule {}
