@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common'
 import { PlatformModule } from '../platform/platform.module.js'
 import { InvoicingService } from './invoicing.service.js'
+import { FeeScheduleService } from './fee-schedule.service.js'
+import { FeeScheduleController } from './fee-schedule.controller.js'
 
 /**
  * Billing — the money owed (ARCHITECTURE.md §7, §8.1).
@@ -11,7 +13,8 @@ import { InvoicingService } from './invoicing.service.js'
  */
 @Module({
   imports: [PlatformModule],
-  providers: [InvoicingService],
-  exports: [InvoicingService],
+  controllers: [FeeScheduleController],
+  providers: [InvoicingService, FeeScheduleService],
+  exports: [InvoicingService, FeeScheduleService],
 })
 export class BillingModule {}
