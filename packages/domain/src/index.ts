@@ -49,3 +49,28 @@ export type { InstalmentStatus, InstalmentTemplate, InstalmentDraft } from './bi
 
 export { post, postAll, reverse, replayBalance, assertLedgerConsistent, projectInvoice } from './billing/ledger.js'
 export type { LedgerEntryType, LedgerEntryDraft, LedgerPosting } from './billing/ledger.js'
+
+// Payments (ARCHITECTURE.md §6, §8.2, §8.3)
+export { allocatePayment, assertConserved, applyAllocations } from './payments/allocation.js'
+export type { AllocatableInstalment, Allocation, AllocationResult } from './payments/allocation.js'
+
+export {
+  canTransition,
+  assertTransition,
+  isSettled,
+  initialStatus,
+  statusAfterRefund,
+  TERMINAL,
+} from './payments/state-machine.js'
+export type { PaymentStatus, PaymentMethod } from './payments/state-machine.js'
+
+// Cash desk (ARCHITECTURE.md §8.4)
+export {
+  expectedClose,
+  closeSession,
+  assertSessionOpen,
+  assertValidFloat,
+  paymentMovement,
+  formatReceiptNumber,
+} from './cashbox/session.js'
+export type { CashSessionStatus, CashMovementType, CashMovement, CloseResult } from './cashbox/session.js'
