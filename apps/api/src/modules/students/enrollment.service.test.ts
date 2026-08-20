@@ -1,9 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { EnrollmentService } from './enrollment.service.js'
+import type { InvoicingService } from '../billing/invoicing.service.js'
 import { ConflictError, InvalidStateError, NotFoundError } from '@fineduc/domain'
 
 describe('EnrollmentService', () => {
   let service: EnrollmentService
+  let invoicing: InvoicingService
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let mockTx: any
   const tenantId = '11111111-1111-1111-1111-111111111111'
@@ -34,7 +36,10 @@ describe('EnrollmentService', () => {
         update: vi.fn(),
       },
     }
-    service = new EnrollmentService()
+    // Invoicing is a separate module's service; these tests cover enrolment
+    // validation only, and pass no context, so it is never reached.
+    invoicing = { raiseForEnrollment: vi.fn() } as unknown as InvoicingService
+    service = new EnrollmentService(invoicing)
   })
 
   describe('enroll', () => {

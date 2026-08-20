@@ -147,7 +147,7 @@ export class StudentController {
       ...(typeof body === 'object' && body !== null ? body : {}),
       studentId,
     })
-    return this.enrollmentService.enroll(tx, user.tenantId, input)
+    return this.enrollmentService.enroll(tx, user.tenantId, input, { userId: user.userId })
   }
 
   /**

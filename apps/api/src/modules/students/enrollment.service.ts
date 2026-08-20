@@ -2,18 +2,30 @@ import { Injectable } from '@nestjs/common'
 import type { TenantTransactionClient } from '@fineduc/db'
 import { ConflictError, NotFoundError, InvalidStateError } from '@fineduc/domain'
 import type { EnrollStudentRequest } from '@fineduc/contracts'
+import { InvoicingService, type RaiseInvoiceResult } from '../billing/invoicing.service.js'
 
 @Injectable()
 export class EnrollmentService {
+  constructor(private readonly invoicing: InvoicingService) {}
+
   /**
    * Enrol a student into a class group for an academic year.
    * Ensures one enrolment per student per year (ARCHITECTURE.md §6 "People").
+   *
+   * Enrolment is THE act that creates money owed (ARCHITECTURE.md §8.1), so
+   * the invoice is raised here, in the caller's transaction, rather than by
+   * a follow-up call. A school must never end up with a student enrolled and
+   * owing nothing because the second request failed.
+   *
+   * The invoice is raised through billing's public service interface — this
+   * module never touches the invoice, instalment or ledger tables itself.
    */
   async enroll(
     tx: TenantTransactionClient,
     tenantId: string,
     input: EnrollStudentRequest,
-  ): Promise<{ enrollmentId: string }> {
+    context?: { readonly userId: string; readonly now?: Date },
+  ): Promise<{ enrollmentId: string; invoice?: RaiseInvoiceResult }> {
     const student = await tx.student.findUnique({ where: { id: input.studentId } })
     if (!student || student.tenantId !== tenantId) {
       throw new NotFoundError('student', input.studentId)
@@ -86,7 +98,21 @@ export class EnrollmentService {
       })
     }
 
-    return { enrollmentId: enrollment.id }
+    // Without a user we cannot attribute a discount grant, so the invoice is
+    // left unraised rather than attributed to nobody. Every HTTP path passes
+    // one; this keeps internal/seed callers honest instead of silently
+    // writing a discount row with a null grantor.
+    if (!context) {
+      return { enrollmentId: enrollment.id }
+    }
+
+    const invoice = await this.invoicing.raiseForEnrollment(tx, tenantId, {
+      enrollmentId: enrollment.id,
+      grantedByUserId: context.userId,
+      now: context.now ?? new Date(),
+    })
+
+    return { enrollmentId: enrollment.id, invoice }
   }
 
   /**

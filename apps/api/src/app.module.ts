@@ -5,6 +5,7 @@ import { IdentityModule } from './modules/identity/identity.module.js'
 import { TenancyModule } from './modules/tenancy/tenancy.module.js'
 import { AcademicsModule } from './modules/academics/academics.module.js'
 import { StudentsModule } from './modules/students/students.module.js'
+import { BillingModule } from './modules/billing/billing.module.js'
 import { AuditModule } from './modules/audit/audit.module.js'
 import { ProblemJsonFilter } from './common/filters/problem-json.js'
 import { AuthGuard } from './common/guards/auth.guard.js'
@@ -19,6 +20,7 @@ import { AuditInterceptor } from './common/interceptors/audit.js'
     TenancyModule,
     AcademicsModule,
     StudentsModule,
+    BillingModule,
     AuditModule,
   ],
   providers: [
