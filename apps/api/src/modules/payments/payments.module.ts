@@ -4,6 +4,7 @@ import { SettlementService, WebhookIngestService, WebhookProcessorService } from
 import { PlatformModule } from '../platform/platform.module.js'
 import { PaymentProviderRegistry } from './provider.registry.js'
 import { PaymentWebhookController } from './webhook.controller.js'
+import { WebhookQueueService } from './webhook-queue.service.js'
 
 /**
  * Payments — settling money against an invoice, whichever rail it arrived on
@@ -20,6 +21,7 @@ import { PaymentWebhookController } from './webhook.controller.js'
   controllers: [PaymentWebhookController],
   providers: [
     PaymentProviderRegistry,
+    WebhookQueueService,
     { provide: SettlementService, useFactory: () => new SettlementService() },
     { provide: WebhookIngestService, useFactory: () => new WebhookIngestService() },
     {
@@ -35,6 +37,6 @@ import { PaymentWebhookController } from './webhook.controller.js'
       inject: [SettlementService],
     },
   ],
-  exports: [SettlementService, WebhookIngestService, WebhookProcessorService, PaymentProviderRegistry],
+  exports: [SettlementService, WebhookIngestService, WebhookProcessorService, PaymentProviderRegistry, WebhookQueueService],
 })
 export class PaymentsModule {}

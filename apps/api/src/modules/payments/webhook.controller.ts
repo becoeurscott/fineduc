@@ -5,6 +5,7 @@ import { SkipAudit } from '../../common/decorators/skip-audit.decorator.js'
 import { PrismaService } from '../platform/prisma.service.js'
 import { PaymentProviderRegistry } from './provider.registry.js'
 import { WebhookIngestService } from '@fineduc/services'
+import { WebhookQueueService } from './webhook-queue.service.js'
 
 /**
  * `POST /webhooks/payments/:provider` — public, and therefore HOSTILE
@@ -33,6 +34,7 @@ export class PaymentWebhookController {
     private readonly prisma: PrismaService,
     private readonly registry: PaymentProviderRegistry,
     private readonly ingest: WebhookIngestService,
+    private readonly queue: WebhookQueueService,
   ) {}
 
   @Public()
@@ -63,9 +65,14 @@ export class PaymentWebhookController {
 
     switch (outcome.result) {
       case 'accepted':
-        // TODO(phase 6): enqueue webhook-processor here once apps/worker
-        // exists. The event is stored and durable, so nothing is lost in the
-        // meantime — it simply is not settled yet.
+        // Hand off and return. The settlement happens in apps/worker; this
+        // request must not wait for it.
+        await this.queue.enqueue({
+          tenantId: '',
+          requestId: (headers['x-request-id'] as string | undefined) ?? '',
+          providerEventId: outcome.providerEventId,
+          provider: providerName,
+        })
         return { received: true, duplicate: false }
       case 'duplicate':
         // The aggregator is retrying a delivery we already hold. That is a
