@@ -133,6 +133,7 @@ fineduc/
 │  ├─ db/           Prisma schema, migrations, seed
 │  ├─ contracts/    Zod schemas + generated OpenAPI types (shared by api & clients)
 │  ├─ providers/    payment + messaging ports and adapters
+│  ├─ services/     application services BOTH api and worker run
 │  ├─ money/        Money value object, currency table, formatting
 │  ├─ config/       typed env loading (Zod), fail-fast at boot
 │  └─ ui/           shared React components + design tokens
@@ -144,6 +145,14 @@ fineduc/
 `domain` depends on nothing but `money` — a zero-dependency, I/O-free value type; reimplementing
 its allocation or rounding inside `domain` would break rule #1. `db`, `providers` may depend on
 `domain`, `money`, and `config`.
+`services` holds the application services that BOTH `api` and `worker` execute — settlement,
+webhook ingest and processing today. It exists because apps may never import each other, and
+duplicating a money path across that boundary would drift; the first symptom of drift on a money
+path is a balance nobody can explain. **Entry rule, deliberately narrow: something belongs in
+`services` only when both processes genuinely run it.** Anything one app alone uses stays in that
+app, or `services` becomes a junk drawer — and a junk drawer between two processes is how a
+modular monolith quietly becomes a distributed one. Nothing in `services` imports a web
+framework: `api` wires it up with explicit factory providers, and `worker` simply constructs it.
 `ui` and the client apps may depend on `money` for **display only** — formatting lives in
 `packages/money` and is never reimplemented elsewhere (AGENTS.md rule #1).
 `api`/`worker` depend on all packages. Apps never import from each other.

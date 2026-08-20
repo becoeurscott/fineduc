@@ -3,6 +3,7 @@ import { PlatformModule } from '../platform/platform.module.js'
 import { PaymentsModule } from '../payments/payments.module.js'
 import { CashSessionService } from './cash-session.service.js'
 import { CashPaymentService } from './cash-payment.service.js'
+import { SettlementService } from '@fineduc/services'
 import { CashController } from './cash.controller.js'
 
 /**
@@ -14,7 +15,14 @@ import { CashController } from './cash.controller.js'
 @Module({
   imports: [PlatformModule, PaymentsModule],
   controllers: [CashController],
-  providers: [CashSessionService, CashPaymentService],
+  providers: [
+    CashSessionService,
+    {
+      provide: CashPaymentService,
+      useFactory: (settlement: SettlementService) => new CashPaymentService(settlement),
+      inject: [SettlementService],
+    },
+  ],
   exports: [CashSessionService, CashPaymentService],
 })
 export class CashboxModule {}

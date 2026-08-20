@@ -1,4 +1,3 @@
-import { Injectable } from '@nestjs/common'
 import type { PrismaClient } from '@fineduc/db'
 import type { PaymentProvider } from '@fineduc/providers'
 
@@ -26,7 +25,6 @@ export type IngestOutcome =
   | { readonly result: 'duplicate'; readonly providerEventId: string }
   | { readonly result: 'rejected'; readonly reason: string }
 
-@Injectable()
 export class WebhookIngestService {
   /**
    * `prisma`, not a tenant transaction: `provider_event` carries no RLS by

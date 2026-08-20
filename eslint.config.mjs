@@ -44,6 +44,7 @@ export default tseslint.config(
       // unknown.
       'boundaries/elements': [
         { type: 'domain', pattern: 'packages/domain/**' },
+        { type: 'services', pattern: 'packages/services/**' },
         { type: 'money', pattern: 'packages/money/**' },
         { type: 'db', pattern: 'packages/db/**' },
         { type: 'contracts', pattern: 'packages/contracts/**' },
@@ -77,6 +78,9 @@ export default tseslint.config(
             // db and providers may depend on domain, money, and config (env/secrets).
             { from: 'db', allow: ['domain', 'money', 'config'] },
             { from: 'providers', allow: ['domain', 'money', 'config'] },
+            // The application services BOTH apps run. It may reach everything
+            // below it, but nothing above: it must never import an app.
+            { from: 'services', allow: ['domain', 'money', 'db', 'contracts', 'providers', 'config'] },
             { from: 'contracts', allow: ['money'] },
             { from: 'config', allow: [] },
             // ui may use money for DISPLAY only (the <Amount> component).
@@ -85,8 +89,8 @@ export default tseslint.config(
             // presentation layer depends on it rather than rolling its own.
             { from: 'ui', allow: ['money'] },
             // apps depend on any package, but NEVER on another app.
-            { from: 'app-api', allow: ['domain', 'money', 'db', 'contracts', 'providers', 'config'] },
-            { from: 'app-worker', allow: ['domain', 'money', 'db', 'contracts', 'providers', 'config'] },
+            { from: 'app-api', allow: ['domain', 'money', 'db', 'contracts', 'providers', 'config', 'services'] },
+            { from: 'app-worker', allow: ['domain', 'money', 'db', 'contracts', 'providers', 'config', 'services'] },
             { from: 'app-dashboard', allow: ['contracts', 'ui', 'money', 'config'] },
             { from: 'app-pay', allow: ['contracts', 'ui', 'money', 'config'] },
             { from: 'app-web', allow: ['ui', 'config'] },

@@ -1,4 +1,3 @@
-import { Injectable } from '@nestjs/common'
 import type { TenantTransactionClient } from '@fineduc/db'
 import { Money, type CurrencyCode } from '@fineduc/money'
 import {
@@ -26,6 +25,10 @@ import {
  * aggregator.
  *
  * Everything runs in the caller's transaction. This service never opens one.
+ *
+ * Framework-free on purpose: it lives in a package both `apps/api` and
+ * `apps/worker` import, and the worker has no Nest container. `apps/api`
+ * registers it with an explicit factory provider instead of a decorator.
  */
 
 export interface SettleParams {
@@ -50,7 +53,6 @@ export interface SettleResult {
   readonly settledInstalmentIds: string[]
 }
 
-@Injectable()
 export class SettlementService {
   async settle(
     tx: TenantTransactionClient,

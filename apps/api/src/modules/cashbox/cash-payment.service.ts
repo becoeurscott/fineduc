@@ -10,7 +10,7 @@ import {
   initialStatus,
   toTenantDate,
 } from '@fineduc/domain'
-import { SettlementService } from '../payments/settlement.service.js'
+import { SettlementService } from '@fineduc/services'
 
 /**
  * Cash at the desk (ARCHITECTURE.md §8.3) — the flow that makes the product

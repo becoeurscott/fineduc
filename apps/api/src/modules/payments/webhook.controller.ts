@@ -4,7 +4,7 @@ import { Public } from '../../common/decorators/public.decorator.js'
 import { SkipAudit } from '../../common/decorators/skip-audit.decorator.js'
 import { PrismaService } from '../platform/prisma.service.js'
 import { PaymentProviderRegistry } from './provider.registry.js'
-import { WebhookIngestService } from './webhook.service.js'
+import { WebhookIngestService } from '@fineduc/services'
 
 /**
  * `POST /webhooks/payments/:provider` — public, and therefore HOSTILE

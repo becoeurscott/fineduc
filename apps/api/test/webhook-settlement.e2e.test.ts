@@ -190,12 +190,12 @@ describe('Mobile money settlement (real Postgres)', () => {
     Money = money.Money
     FakeProvider = providers.FakePaymentProvider
     const inv = await import('../dist/modules/billing/invoicing.service.js')
-    const st = await import('../dist/modules/payments/settlement.service.js')
-    const wp = await import('../dist/modules/payments/webhook-processor.service.js')
-    const wi = await import('../dist/modules/payments/webhook.service.js')
+    // These live in @fineduc/services, not apps/api — apps/worker runs them
+    // too, and apps may never import each other.
+    const services = await import('@fineduc/services')
     invoicing = new inv.InvoicingService()
-    processor = new wp.WebhookProcessorService(new st.SettlementService())
-    ingest = new wi.WebhookIngestService()
+    processor = new services.WebhookProcessorService(new services.SettlementService())
+    ingest = new services.WebhookIngestService()
     prisma = db.createPrismaClient({
       databaseUrl: db.resolveAppDatabaseUrl(process.env.DATABASE_URL as string, process.env.APP_DATABASE_URL),
     })

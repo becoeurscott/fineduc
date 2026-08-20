@@ -1,9 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common'
 import type { TenantTransactionClient } from '@fineduc/db'
 import { Money, assertCurrencyCode } from '@fineduc/money'
 import { NotFoundError, assertTransition, canTransition, isSettled, toTenantDate } from '@fineduc/domain'
 import type { NormalizedPaymentEvent } from '@fineduc/providers'
 import { SettlementService } from './settlement.service.js'
+import type { Logger } from '../logger.js'
+import { consoleLogger } from '../logger.js'
 
 /**
  * The webhook PROCESSOR (ARCHITECTURE.md §8.2, step 3).
@@ -23,11 +24,11 @@ export type ProcessOutcome =
   | { readonly result: 'recorded'; readonly paymentId: string; readonly status: string }
   | { readonly result: 'ignored'; readonly paymentId: string; readonly reason: string }
 
-@Injectable()
 export class WebhookProcessorService {
-  private readonly logger = new Logger(WebhookProcessorService.name)
-
-  constructor(private readonly settlement: SettlementService) {}
+  constructor(
+    private readonly settlement: SettlementService,
+    private readonly logger: Logger = consoleLogger('WebhookProcessorService'),
+  ) {}
 
   async process(
     tx: TenantTransactionClient,

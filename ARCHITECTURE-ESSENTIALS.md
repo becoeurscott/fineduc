@@ -19,9 +19,11 @@ Monorepo: pnpm workspaces + Turborepo. Modular monolith — **no microservices, 
 ## Layout
 ```
 apps/     api · worker · dashboard · pay · web
-packages/ domain · db · contracts · providers · money · config · ui
+packages/ domain · db · contracts · providers · services · money · config · ui
 ```
-`domain` imports nothing but `money` (a zero-dep, I/O-free value type). Apps never import from apps. Enforced by lint in CI.
+`domain` imports nothing but `money` (a zero-dep, I/O-free value type). Apps never import from
+apps — anything BOTH api and worker run lives in `services`, which imports no web framework.
+Enforced by lint in CI.
 
 ## The ten rules — break one and the system is wrong
 
