@@ -17,11 +17,16 @@ corrupt each other's fixtures.
 | 100 000 XAF split three ways re-sums to 100 000 | `packages/domain/src/billing/instalments.test.ts` |
 | One tenant cannot READ another's invoice by its real id | `enrollment-invoice.e2e.test.ts` |
 | Money leaves the API as an integer string, never a number | `enrollment-invoice.e2e.test.ts` |
+| A double-tapped payment settles ONCE | `cash-payment.e2e.test.ts` |
+| Concurrent allocation does not over-allocate | `cash-payment.e2e.test.ts` |
+| Receipt numbers are gapless, even across a rollback | `cash-payment.e2e.test.ts` |
+| A cash variance cannot be closed without a written reason | `cash-payment.e2e.test.ts` |
 | DI resolves for real (the tsx/esbuild trap) | `health.e2e.test.ts` |
 
 ## Still owed
 
-- A webhook delivered twice settles once.
-- No reminder for an instalment paid between scheduling and sending.
-- Concurrent allocation does not over-allocate.
+- A webhook delivered twice settles once (phase 6 — the cash double-tap
+  case is covered; the aggregator path is not).
+- No reminder for an instalment paid between scheduling and sending
+  (phase 7).
 - A log fixture contains no phone number.
