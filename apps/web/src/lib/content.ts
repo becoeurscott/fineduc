@@ -152,6 +152,32 @@ export const CONTENT = {
         },
       ],
     },
+    integrations: {
+      eyebrow: 'Intégrations',
+      title: 'Se branche sur ce que vous utilisez déjà.',
+      subtitle:
+        'Les canaux de paiement et de message que les parents utilisent tous les jours, et les formats que votre comptable attend.',
+      /**
+       * Capabilities, not partners. Every label below is something the
+       * product does (see `features`); none of them claims a commercial
+       * relationship — the mobile money rail is reached through a licensed
+       * aggregator, not a direct deal with an operator. Rendered as
+       * labelled placeholder tiles until any logo is cleared for use.
+       */
+      placeholders: [
+        'Mobile money',
+        'Carte bancaire',
+        'WhatsApp',
+        'SMS',
+        'Export Excel',
+        'Reçus PDF',
+        'Import de registre',
+        'Espèces au guichet',
+      ],
+      footnote: 'Les logos des partenaires apparaîtront ici une fois les accords signés.',
+      /** Tilted card pair — real screens go in once the product ships. */
+      previewLabels: ['Aperçu produit', 'Aperçu produit'],
+    },
     showcase: {
       eyebrow: 'Le tableau de bord',
       title: 'Votre position, sans demander à personne.',
@@ -433,6 +459,24 @@ export const CONTENT = {
         { title: 'Cash control', body: 'The cashier opens with a float, takes payments, then closes with a count. The variance is computed and must be justified.' },
         { title: 'Real-time director view', body: 'Collections, recovery rate, arrears ageing, mobile money share. Built for a phone.' },
       ],
+    },
+    integrations: {
+      eyebrow: 'Integrations',
+      title: 'Plugs into what you already use.',
+      subtitle:
+        'The payment and message channels parents use every day, and the formats your accountant expects.',
+      placeholders: [
+        'Mobile money',
+        'Bank card',
+        'WhatsApp',
+        'SMS',
+        'Excel export',
+        'PDF receipts',
+        'Register import',
+        'Cash at the desk',
+      ],
+      footnote: 'Partner logos will appear here once the agreements are signed.',
+      previewLabels: ['Product preview', 'Product preview'],
     },
     showcase: {
       eyebrow: 'The dashboard',

@@ -10,6 +10,8 @@ import { DesktopMock } from '@/components/desktop-mock'
 import { Clouds, LandscapeSection } from '@/components/landscape'
 import { Faq } from '@/components/faq'
 import { PricingTable } from '@/components/pricing-table'
+import { OrbitRing } from '@/components/orbit-ring'
+import { TiltedCards } from '@/components/tilted-cards'
 
 function isLocale(value: string): value is Locale {
   return (LOCALES as readonly string[]).includes(value)
@@ -162,6 +164,29 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           <p className="mt-4 text-center text-xs text-ink/60">{t.showcase.caption}</p>
         </Reveal>
       </LandscapeSection>
+
+      {/* ------------------------------------------------------ 4b. integrations
+          Template "Integrations": a heading, then a half-circle of tiles
+          clipped by its own box, with a short line underneath. The fanned
+          card pair is the template's Features accent, reused here as the
+          slot real product screens will occupy. Every tile is a labelled
+          placeholder — an integrations wall reads as a claim of
+          partnership, and Fineduc has signed none yet. */}
+      <Section id="integrations">
+        <Reveal>
+          <SectionHeading
+            eyebrow={t.integrations.eyebrow}
+            title={t.integrations.title}
+            subtitle={t.integrations.subtitle}
+          />
+        </Reveal>
+        <Reveal delay={80} distance="lg" className="mt-14">
+          <OrbitRing items={t.integrations.placeholders} footnote={t.integrations.footnote} />
+        </Reveal>
+        <Reveal delay={140} className="mt-16">
+          <TiltedCards labels={t.integrations.previewLabels} />
+        </Reveal>
+      </Section>
 
       {/* ------------------------------------------------------ 5. how it works */}
       <Section tone="canvas">

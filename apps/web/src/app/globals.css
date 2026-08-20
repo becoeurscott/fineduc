@@ -136,6 +136,14 @@ main > section[data-section]:first-child {
   main > section[data-section]:first-child { padding-top: 260px; }
 }
 
+/* Orbit (components/orbit-ring.tsx). Applied twice per tile — forwards on
+   the ring, reversed on the tile — so a tile travels the arc while staying
+   upright. One shared keyframe keeps the two exactly in step. */
+@keyframes orbit {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
 /* Infinite ticker (components/ticker.tsx). The track holds its items twice
    and moves by exactly half its own width, so the seam is invisible. */
 @keyframes ticker {
