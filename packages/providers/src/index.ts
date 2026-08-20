@@ -19,6 +19,11 @@ export type {
 
 export { FakePaymentProvider } from './payment/adapters/fake.js'
 export { ManualPaymentProvider } from './payment/adapters/manual.js'
+export { CinetPayProvider } from './payment/adapters/cinetpay.js'
+export type { CinetPayOptions } from './payment/adapters/cinetpay.js'
+
+export { postJson, DEFAULT_POLICY, HttpTimeoutError } from './http.js'
+export type { FetchLike, HttpPolicy } from './http.js'
 
 export { runPaymentProviderContract } from './payment/port.contract.js'
 export type { ProviderCapabilities } from './payment/port.contract.js'
