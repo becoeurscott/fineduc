@@ -1,5 +1,5 @@
 // Root ESLint config. Enforces the module-boundary rule from ARCHITECTURE.md §3:
-//   domain depends on nothing.
+//   domain depends on nothing but money (a zero-dependency, I/O-free value type).
 //   db, providers may depend on domain and money.
 //   api/worker depend on all packages.
 //   apps never import from each other. Nothing imports from apps/*.
@@ -18,6 +18,10 @@ export default tseslint.config(
       '**/node_modules/**',
       '**/coverage/**',
       '**/generated/**',
+      // Written by `next dev`/`next build`, not by us — Next re-adds the
+      // triple-slash reference to .next/types on every run, so linting it
+      // just fails CI on a file nobody is allowed to edit.
+      '**/next-env.d.ts',
     ],
   },
   {
@@ -61,7 +65,13 @@ export default tseslint.config(
           default: 'disallow',
           rules: [
             // domain imports NOTHING of ours.
-            { from: 'domain', allow: [] },
+            // domain imports nothing of ours EXCEPT money. Reimplementing
+            // largest-remainder allocation or half-up percentage rounding
+            // inside domain would break rule #1 ("all arithmetic via
+            // packages/money"), which outranks a tidier boundary; and money
+            // is a true leaf — zero dependencies, no I/O — so it cannot drag
+            // anything impure in behind it.
+            { from: 'domain', allow: ['money'] },
             // money is a leaf: no internal dependencies.
             { from: 'money', allow: [] },
             // db and providers may depend on domain, money, and config (env/secrets).

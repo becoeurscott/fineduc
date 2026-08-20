@@ -141,7 +141,9 @@ fineduc/
 ```
 
 **Dependency rule, enforced by `eslint-plugin-boundaries` in CI:**
-`domain` depends on nothing. `db`, `providers` may depend on `domain`, `money`, and `config`.
+`domain` depends on nothing but `money` — a zero-dependency, I/O-free value type; reimplementing
+its allocation or rounding inside `domain` would break rule #1. `db`, `providers` may depend on
+`domain`, `money`, and `config`.
 `ui` and the client apps may depend on `money` for **display only** — formatting lives in
 `packages/money` and is never reimplemented elsewhere (AGENTS.md rule #1).
 `api`/`worker` depend on all packages. Apps never import from each other.
