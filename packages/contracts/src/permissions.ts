@@ -21,6 +21,12 @@ export const CAPABILITIES = [
   'payments.refund',
   'reminders.send',
   'reminders.configure',
+  /** See the pending-moratoire queue, and record one for a parent at the counter. */
+  'moratorium.view',
+  /** Approve or refuse a request. */
+  'moratorium.decide',
+  /** Revoke a delay the school already granted — it takes back something a family is relying on. */
+  'moratorium.cancel',
   'users.manage',
   'data.export',
   'audit.view',
@@ -44,6 +50,9 @@ const MATRIX: Record<Role, Partial<Record<Capability, Grant>>> = {
     'payments.refund': 'requires_approval',
     'reminders.send': true,
     'reminders.configure': true,
+    'moratorium.view': true,
+    'moratorium.decide': true,
+    'moratorium.cancel': true,
     'users.manage': true,
     'data.export': true,
     'audit.view': true,
@@ -59,6 +68,8 @@ const MATRIX: Record<Role, Partial<Record<Capability, Grant>>> = {
     'payments.refund': 'requires_approval',
     'reminders.send': true,
     'reminders.configure': true,
+    'moratorium.view': true,
+    'moratorium.decide': true,
     'data.export': true,
     'audit.view': true,
   },
@@ -71,10 +82,14 @@ const MATRIX: Record<Role, Partial<Record<Capability, Grant>>> = {
     'students.view': true,
     'students.edit': true,
     'reminders.send': true,
+    // Sees the queue and records one for a parent at the counter, but does
+    // not decide it — the same shape as reminders: send, do not configure.
+    'moratorium.view': true,
   },
   auditor: {
     'dashboard.view': true,
     'students.view': true,
+    'moratorium.view': true,
     'data.export': true,
     'audit.view': true,
   },

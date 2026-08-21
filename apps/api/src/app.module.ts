@@ -8,6 +8,7 @@ import { StudentsModule } from './modules/students/students.module.js'
 import { BillingModule } from './modules/billing/billing.module.js'
 import { CashboxModule } from './modules/cashbox/cashbox.module.js'
 import { PaymentsModule } from './modules/payments/payments.module.js'
+import { MessagingModule } from './modules/messaging/messaging.module.js'
 import { AuditModule } from './modules/audit/audit.module.js'
 import { ProblemJsonFilter } from './common/filters/problem-json.js'
 import { AuthGuard } from './common/guards/auth.guard.js'
@@ -25,6 +26,7 @@ import { AuditInterceptor } from './common/interceptors/audit.js'
     BillingModule,
     CashboxModule,
     PaymentsModule,
+    MessagingModule,
     AuditModule,
   ],
   providers: [

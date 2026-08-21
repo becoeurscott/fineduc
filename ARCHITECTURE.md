@@ -644,6 +644,9 @@ lockout after 5 failures, exponential backoff, unlock by the director or by emai
 | Refund / reverse a payment | ⚠ dual approval | ⚠ requests | ✖ | ✖ | ✖ |
 | Send a manual reminder | ✅ | ✅ | ✖ | ✅ | ✖ |
 | Change reminder rules / templates | ✅ | ✅ | ✖ | ✖ | ✖ |
+| See the moratoire queue / record one at the counter | ✅ | ✅ | ✖ | ✅ | ✅ (read) |
+| Approve or refuse a moratoire | ✅ | ✅ | ✖ | ✖ | ✖ |
+| Cancel a moratoire already granted | ✅ | ✖ | ✖ | ✖ | ✖ |
 | Manage users & roles | ✅ | ✖ | ✖ | ✖ | ✖ |
 | Export all data | ✅ | ✅ | ✖ | ✖ | ✅ |
 | View the audit log | ✅ | ✅ (own tenant) | ✖ | ✖ | ✅ |

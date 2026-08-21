@@ -63,6 +63,37 @@ async function bootstrap() {
   app.use('/auth/select-tenant', authLimiter)
   app.use('/auth/2fa', authLimiter)
 
+  /*
+   * The PUBLIC parent-facing pages. Until now `/pay/:token` had no limit at
+   * all — it is unauthenticated, it hits the database on every call, and it
+   * is the cheapest thing on the box to hammer.
+   *
+   * Keyed by IP, and deliberately NOT by token: keying by token would let
+   * anyone who saw a link in a forwarded message lock that family out of
+   * their own moratoire.
+   *
+   * 30/min is loose on purpose. A whole neighbourhood shares one carrier NAT
+   * IP in the markets this serves, so a tight limit punishes the families it
+   * is meant to protect. Writes get a tighter one.
+   *
+   * Caveat worth knowing: express-rate-limit is in-memory and PER PROCESS, so
+   * with two API replicas the effective limit is doubled. A Redis-backed
+   * store is a separate decision, not a silent assumption.
+   */
+  const publicPageLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+      type: 'https://fineduc.com/errors/TOO_MANY_REQUESTS',
+      title: 'Too Many Requests',
+      status: 429,
+    },
+  })
+  app.use('/pay', publicPageLimiter)
+  app.use('/moratoire', publicPageLimiter)
+
   app.enableCors({
     origin: env.CORS_ALLOWED_ORIGINS.length > 0 ? env.CORS_ALLOWED_ORIGINS : false,
     credentials: true,

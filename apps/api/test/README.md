@@ -31,11 +31,25 @@ corrupt each other's fixtures.
 | A granted moratoire silences the ordinary reminder ladder | `apps/worker/test/reminder-flow.e2e.test.ts` |
 | A reminder cancelled by a PAYMENT is never revived by a sweep | `apps/worker/test/reminder-flow.e2e.test.ts` |
 | A new table is not silently DELETE-able by the app role | `packages/db/src/rls.integration.test.ts` |
+| **One moratoire per instalment, under concurrency** | `moratorium.e2e.test.ts` |
+| **`refusalFreesSlot` honoured in BOTH configurations** | `moratorium.e2e.test.ts` |
+| **A moratoire never runs past 21 days from the ORIGINAL due date**, including a hand-typed staff date | `moratorium.e2e.test.ts` |
+| **Every way of being wrong on `/moratoire/:token` is the SAME 404** | `moratorium.e2e.test.ts` |
+| A replayed request returns the first answer, never an error | `moratorium.e2e.test.ts` |
+| The public chat leaks no surname, matricule or phone | `moratorium.e2e.test.ts` |
 
 Some of these live under `apps/worker/test/`. They are listed here because
 this table is the index of the AGENTS.md guarantees, not of one app's suite —
 and the two that were owed since phase 7 were owed by the reminder path,
 which is a worker concern.
+
+## Known gap, stated rather than left to be noticed
+
+There is still no helper for authenticating over HTTP in this suite, so the
+moratoire AUTHORISATION MATRIX (cashier and auditor refused on approve;
+secretary refused on approve but allowed on list) is covered by the
+`RolesGuard` unit test and the declarative `@Roles(...)` on the controller,
+not by an end-to-end request. Building that helper is worth its own commit.
 
 ## Still owed
 
