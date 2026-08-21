@@ -104,18 +104,9 @@ export interface PaymentProvider {
   refund(providerRef: string, amount: Money, reason: string): Promise<RefundResult>
 }
 
-/** Raised when a provider rejects a request for a reason the caller can act on. */
-export class ProviderError extends Error {
-  readonly provider: string
-  readonly code: string
-  /** Whether retrying the same call could plausibly succeed. */
-  readonly retryable: boolean
-
-  constructor(provider: string, code: string, message: string, retryable = false) {
-    super(message)
-    this.name = 'ProviderError'
-    this.provider = provider
-    this.code = code
-    this.retryable = retryable
-  }
-}
+/**
+ * Raised when a provider rejects a request for a reason the caller can act on.
+ * Defined one level up and re-exported here, because the messaging port raises
+ * the same type — see `../provider-error.ts`.
+ */
+export { ProviderError } from '../provider-error.js'

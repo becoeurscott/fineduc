@@ -522,12 +522,21 @@ export interface PaymentProvider {
 // packages/providers/messaging/port.ts
 export interface MessagingProvider {
   readonly name: string
-  readonly channel: 'whatsapp' | 'sms'
+  readonly channels: readonly ('whatsapp' | 'sms')[]
   send(msg: OutboundMessage): Promise<SendResult>       // must accept an idempotencyKey
-  parseStatusWebhook(payload: unknown): DeliveryStatusEvent[]
+  parseStatusWebhook(payload: unknown): readonly NormalizedMessageStatusEvent[]
   estimateCost(msg: OutboundMessage): Money
 }
 ```
+
+`channels` is a list, not the singular `channel` this section first sketched:
+the console and fake adapters genuinely serve both rails, and the sender picks
+an adapter per channel, so the plural is the honest shape.
+
+`estimateCost` is not a nicety. The sender debits the prepaid wallet in the
+same transaction as the `message` row, and it cannot debit an amount it does
+not yet know — so the estimate must be exact, including the segment count for
+an SMS body that forces UCS-2.
 
 **Adapters, v1**
 - Payment: **CinetPay** (primary — MTN, Orange, Moov, Wave, card across Cameroon, CIV,

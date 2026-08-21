@@ -5,7 +5,7 @@
  * rule #8). Callers depend on the PORT; which adapter is behind it is a
  * configuration decision, not a code one.
  */
-export { ProviderError } from './payment/port.js'
+export { ProviderError } from './provider-error.js'
 export type {
   PaymentProvider,
   PaymentOperator,
@@ -27,3 +27,26 @@ export type { FetchLike, HttpPolicy } from './http.js'
 
 export { runPaymentProviderContract } from './payment/port.contract.js'
 export type { ProviderCapabilities } from './payment/port.contract.js'
+
+/* ------------------------------------------------------------ messaging -- */
+
+export { redactPhone, assertE164, assertChannel } from './messaging/port.js'
+export type {
+  MessagingProvider,
+  Channel,
+  MessageDeliveryStatus,
+  OutboundMessage,
+  SendResult,
+  NormalizedMessageStatusEvent,
+} from './messaging/port.js'
+
+export { priceMessage, DEFAULT_UNIT_COSTS } from './messaging/cost.js'
+export type { UnitCosts } from './messaging/cost.js'
+
+export { ConsoleMessagingProvider } from './messaging/adapters/console.js'
+export type { ConsoleMessagingOptions } from './messaging/adapters/console.js'
+export { FakeMessagingProvider } from './messaging/adapters/fake.js'
+export type { FakeMessagingOptions, FakeSentMessage } from './messaging/adapters/fake.js'
+
+export { runMessagingProviderContract } from './messaging/port.contract.js'
+export type { MessagingCapabilities } from './messaging/port.contract.js'
