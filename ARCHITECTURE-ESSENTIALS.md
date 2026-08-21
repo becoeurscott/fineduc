@@ -54,10 +54,11 @@ student ─ student_guardian ─ guardian
 enrollment            ← the act that creates money owed
   └ invoice ─ invoice_line ─ discount ─ adjustment
        └ instalment    ← what reminders and payments hang off
+            └ moratorium ─ moratorium_chat_link   ← a parent-requested delay
             └ payment_allocation ─ payment ─ receipt / refund
 student_ledger_entry  ← APPEND-ONLY truth of a student's account
 cash_desk ─ cash_session ─ cash_movement     ← the anti-leak control
-reminder_rule ─ reminder_schedule ─ message ─ message_credit_ledger
+reminder_rule(basis) ─ reminder_schedule ─ message ─ message_credit_ledger
 message_template · payment_link · provider_event · outbox · audit_log
 ```
 

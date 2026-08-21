@@ -76,6 +76,21 @@ async function main() {
           locale: 'fr',
           plan: 'essentiel',
           status: 'active',
+          // The moratoire, switched ON for the dev school so the whole
+          // reminder path can be walked end to end. `manual` deliberately:
+          // it exercises the harder of the two flows, and the auto flow is
+          // one setting away.
+          settings: {
+            messaging: { sendHour: 9, quietHours: { startHour: 7, endHour: 20 }, guardianDailyCap: 2, tenantDailyCap: 2_000 },
+            moratorium: {
+              enabled: true,
+              approval: 'manual',
+              allowedDurationsDays: [7, 14, 21],
+              offerFromDaysBeforeDue: 14,
+              lateGraceDays: 7,
+              refusalFreesSlot: true,
+            },
+          },
         },
       })
 
@@ -315,6 +330,73 @@ async function main() {
           studentIndex++
         }
       }
+
+      /*
+       * Message templates and the reminder ladder.
+       *
+       * The J-14 rule is the one that carries {{lien_moratoire}} — it is the
+       * first reminder a family gets, two weeks ahead, and the only one that
+       * offers a delay. The two `moratorium_end` rules hang off the DEFERRED
+       * date instead, which is the whole reason `basis` exists: the same
+       * reminder_rule and reminder_schedule tables serve both ladders.
+       *
+       * Bodies are pure GSM-7 on purpose. "reçu" and "coût" force UCS-2 and
+       * roughly triple the SMS bill (see `smsSegments`), so a reminder that
+       * goes to four hundred families avoids them.
+       */
+      const templates = [
+        {
+          code: 'reminder_j14_moratoire',
+          body:
+            'Bonjour, la {{tranche}} de {{eleve}} ({{montant}} FCFA) est due le {{echeance}}. ' +
+            'Besoin de plus de temps ? Demandez un delai ici : {{lien_moratoire}}',
+          variables: ['tranche', 'eleve', 'montant', 'echeance', 'lien_moratoire'],
+        },
+        {
+          code: 'moratorium_end_j7',
+          body:
+            'Bonjour, le delai accorde pour la {{tranche}} de {{eleve}} se termine le {{echeance}}. ' +
+            'Montant restant : {{montant}} FCFA.',
+          variables: ['tranche', 'eleve', 'montant', 'echeance'],
+        },
+        {
+          code: 'moratorium_end_eve',
+          body:
+            'Rappel : le delai pour la {{tranche}} de {{eleve}} se termine demain, {{echeance}}. ' +
+            'Montant restant : {{montant}} FCFA.',
+          variables: ['tranche', 'eleve', 'montant', 'echeance'],
+        },
+      ]
+      for (const template of templates) {
+        await tx.messageTemplate.create({
+          data: { tenantId: tenant.id, channel: 'whatsapp', locale: 'fr', ...template },
+        })
+      }
+
+      const rules = [
+        { name: 'Rappel J-14 (offre de moratoire)', offsetDays: -14, basis: 'due_date' as const, templateCode: 'reminder_j14_moratoire', escalationLevel: 0 },
+        { name: 'Fin de moratoire J-7', offsetDays: -7, basis: 'moratorium_end' as const, templateCode: 'moratorium_end_j7', escalationLevel: 0 },
+        { name: 'Fin de moratoire, veille', offsetDays: -1, basis: 'moratorium_end' as const, templateCode: 'moratorium_end_eve', escalationLevel: 1 },
+      ]
+      for (const rule of rules) {
+        await tx.reminderRule.create({ data: { tenantId: tenant.id, channel: 'whatsapp', ...rule } })
+      }
+
+      /*
+       * A prepaid balance. Without it `decideEligibility` skips every
+       * reminder as `no_credits` and alerts — correct behaviour, but it
+       * makes the dev school look broken. 20 000 XAF buys 2 000 WhatsApp
+       * messages at the PRD price.
+       */
+      await tx.messageCreditLedgerEntry.create({
+        data: {
+          tenantId: tenant.id,
+          entryType: 'topup',
+          amountMinor: 20_000n,
+          balanceAfterMinor: 20_000n,
+          note: 'Seed: opening balance for local development',
+        },
+      })
 
       const subscription = await tx.subscription.create({
         data: {

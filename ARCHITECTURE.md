@@ -303,7 +303,10 @@ omitted below for readability.
   whatsapp_template_status, is_active` — WhatsApp templates need Meta pre-approval, so the
   approval status lives here
 - **reminder_rule** — `tenant_id, name, offset_days (signed; −7 = seven days before due),
-  channel, template_code, escalation_level, is_active, applies_to (all|class|status)`
+  channel, template_code, escalation_level, is_active, applies_to (all|class|status),
+  basis (due_date|moratorium_end)` — `basis` is what `offset_days` counts FROM, so the two
+  end-of-moratoire reminders reuse this table and `reminder_schedule` rather than needing
+  their own
 - **reminder_schedule** — materialised intent. `instalment_id, reminder_rule_id, guardian_id,
   scheduled_for (timestamptz, computed in tenant tz), status (scheduled|sent|skipped|
   cancelled|failed), skip_reason, message_id` — **unique on (instalment_id, rule_id, guardian_id)**
@@ -312,6 +315,17 @@ omitted below for readability.
   provider_message_id, error_code, cost_minor, sent_at, delivered_at, read_at`
 - **message_credit_ledger** — append-only wallet. `tenant_id, entry_type (topup|debit|
   refund|adjustment), amount_minor, balance_after_minor, message_id, note`
+- **moratorium** — a parent-requested delay on ONE instalment. `instalment_id, student_id,
+  guardian_id, status (pending|granted|refused|cancelled), source (chatbot|staff),
+  requested_days, original_due_on, deferred_due_on, reason, idempotency_key, decided_at,
+  decided_by, decision_note`. **`instalment.due_on` is never rewritten** — reads compute
+  `effectiveDueOn = moratorium?.deferred_due_on ?? instalment.due_on`, so "was this actually
+  late?" stays answerable. MUTABLE, unlike the money tables: rule #2 covers payments and
+  ledger entries, and a moratoire moves no francs. DELETE stays revoked.
+- **moratorium_chat_link** — the token behind the link in a reminder. `instalment_id,
+  student_id, guardian_id, token (unique), expires_at, consumed_at`. Scoped to one instalment
+  and one guardian; the token carries the tenant so the public chat page can open an RLS
+  context with no JWT.
 
 ### Platform
 - **subscription** — `tenant_id, plan, billing_period, student_cap, price_minor,
@@ -336,6 +350,8 @@ create unique index on cash_session (cash_desk_id) where status = 'open';
 create unique index on academic_year (tenant_id) where status = 'active';
 create index     on student_ledger_entry (tenant_id, student_id, occurred_on desc);
 create index     on reminder_schedule (status, scheduled_for) where status = 'scheduled';
+create unique index on moratorium (tenant_id, instalment_id) where status in ('pending','granted');
+create index     on moratorium (tenant_id, deferred_due_on) where status = 'granted';
 create index     on audit_log (tenant_id, entity_type, entity_id, occurred_at desc);
 ```
 
@@ -353,7 +369,7 @@ interface only — never into another module's repository.
 | `billing` | fee_schedule, fee_item, instalment_plan, invoice, instalment, discount, adjustment, student_ledger_entry | publish a schedule, **generate an invoice + instalments on enrolment**, apply a discount, post an adjustment, compute a balance |
 | `payments` | payment, payment_allocation, payment_link, receipt, refund, provider_event | initiate mobile money, record cash, **process a webhook**, allocate, issue a receipt, refund, reconcile |
 | `cashbox` | cash_desk, cash_session, cash_movement | open, take cash, close with a count, reconcile, daily report |
-| `messaging` | message_template, reminder_rule, reminder_schedule, message, message_credit_ledger | schedule reminders, render, send, track delivery, meter credits, honour opt-out |
+| `messaging` | message_template, reminder_rule, reminder_schedule, message, message_credit_ledger, moratorium, moratorium_chat_link | schedule reminders, render, send, track delivery, meter credits, honour opt-out, grant and decide moratoires |
 | `analytics` | read-only projections | director dashboard, arrears ageing, recovery rate, method mix, reminder effectiveness |
 | `audit` | audit_log | write (via interceptor), query, export |
 | `platform` | health, config, jobs admin, provider status | ops surface |

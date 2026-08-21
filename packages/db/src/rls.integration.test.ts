@@ -334,6 +334,29 @@ async function seedTenantGraph(marker: 'A' | 'B'): Promise<TenantFixture> {
     await tx.messageCreditLedgerEntry.create({
       data: { tenantId, entryType: 'debit', amountMinor: -10n, balanceAfterMinor: 990n, messageId: message.id },
     })
+    await tx.moratorium.create({
+      data: {
+        tenantId,
+        instalmentId: instalment.id,
+        studentId: student.id,
+        guardianId: guardian.id,
+        source: 'chatbot',
+        status: 'granted',
+        requestedDays: 14,
+        originalDueOn: new Date('2026-10-01'),
+        deferredDueOn: new Date('2026-10-15'),
+      },
+    })
+    await tx.moratoriumChatLink.create({
+      data: {
+        tenantId,
+        instalmentId: instalment.id,
+        studentId: student.id,
+        guardianId: guardian.id,
+        token: `${tenantId}.mora-${marker}-0001`,
+        expiresAt: new Date('2027-01-01'),
+      },
+    })
     await tx.subscription.create({
       data: {
         tenantId,
@@ -415,6 +438,8 @@ const RLS_TABLES: Array<{
     tenantKey: 'tenantId',
     findMany: (tx) => tx.messageCreditLedgerEntry.findMany(),
   },
+  { name: 'moratorium', tenantKey: 'tenantId', findMany: (tx) => tx.moratorium.findMany() },
+  { name: 'moratoriumChatLink', tenantKey: 'tenantId', findMany: (tx) => tx.moratoriumChatLink.findMany() },
   { name: 'subscription', tenantKey: 'tenantId', findMany: (tx) => tx.subscription.findMany() },
   { name: 'auditLog', tenantKey: 'tenantId', findMany: (tx) => tx.auditLog.findMany() },
 ]
@@ -502,5 +527,38 @@ describe('Row-Level Security — cross-tenant isolation', () => {
         tx.auditLog.updateMany({ where: {}, data: { action: 'tampered' } }),
       ),
     ).rejects.toThrow()
+  })
+
+  /**
+   * A trap worth a test rather than a comment. The 20260818193836 migration
+   * did `REVOKE DELETE ON ALL TABLES`, which covered the tables existing at
+   * that moment — but its `ALTER DEFAULT PRIVILEGES ... GRANT ... DELETE`
+   * hands DELETE to fineduc_app on every table created AFTERWARDS. So a new
+   * table is born delete-able and has to be revoked by name, and nothing
+   * fails if you forget.
+   *
+   * This assertion is what makes the next new table's author notice.
+   */
+  it.each([
+    { name: 'moratorium', deleteAll: (tx: TenantTransactionClient) => tx.moratorium.deleteMany({ where: {} }) },
+    {
+      name: 'moratoriumChatLink',
+      deleteAll: (tx: TenantTransactionClient) => tx.moratoriumChatLink.deleteMany({ where: {} }),
+    },
+  ])('the app role cannot DELETE from $name — a new table is born DELETE-able', async ({ deleteAll }) => {
+    await expect(withTenant(appClient, tenantA.tenantId, (tx) => deleteAll(tx))).rejects.toThrow()
+  })
+
+  /**
+   * A moratoire is a scheduling fact, not a money row, so UPDATE stays
+   * granted — approve and refuse both need it. Asserted so that a future
+   * "tighten the grants" sweep has to make a deliberate decision rather
+   * than a consistent-looking one that breaks the bursar's queue.
+   */
+  it('the app role CAN update a moratorium — it is a schedule, not a ledger', async () => {
+    const updated = await withTenant(appClient, tenantA.tenantId, (tx) =>
+      tx.moratorium.updateMany({ where: {}, data: { decisionNote: 'reviewed' } }),
+    )
+    expect(updated.count).toBeGreaterThan(0)
   })
 })

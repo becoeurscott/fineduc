@@ -275,6 +275,37 @@ enum ReminderScheduleStatus {
   @@map("reminder_schedule_status")
 }
 
+/// What a reminder rule's `offset_days` is measured FROM.
+/// `due_date` is the ordinary ladder. `moratorium_end` anchors on
+/// `moratorium.deferred_due_on`, so the two end-of-moratoire reminders reuse
+/// reminder_rule and reminder_schedule unchanged rather than needing their
+/// own table and their own queue.
+enum ReminderBasis {
+  due_date
+  moratorium_end
+
+  @@map("reminder_basis")
+}
+
+/// Four states, and expiry is NOT one of them: a moratoire has expired when
+/// `today > deferred_due_on`, which is a comparison rather than a row a job
+/// has to remember to write.
+enum MoratoriumStatus {
+  pending
+  granted
+  refused
+  cancelled
+
+  @@map("moratorium_status")
+}
+
+enum MoratoriumSource {
+  chatbot
+  staff
+
+  @@map("moratorium_source")
+}
+
 enum MessageStatus {
   queued
   sent
@@ -366,6 +397,8 @@ model Tenant {
   messageTemplates     MessageTemplate[]
   reminderRules        ReminderRule[]
   reminderSchedules    ReminderSchedule[]
+  moratoriums          Moratorium[]
+  moratoriumChatLinks  MoratoriumChatLink[]
   messages             Message[]
   messageCreditLedger  MessageCreditLedgerEntry[]
   subscription         Subscription?
@@ -573,13 +606,15 @@ model Student {
   createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  tenant           Tenant               @relation(fields: [tenantId], references: [id])
-  studentGuardians StudentGuardian[]
-  enrollments      Enrollment[]
-  ledgerEntries    StudentLedgerEntry[]
-  payments         Payment[]
-  paymentLinks     PaymentLink[]
-  messages         Message[]
+  tenant              Tenant               @relation(fields: [tenantId], references: [id])
+  studentGuardians    StudentGuardian[]
+  enrollments         Enrollment[]
+  ledgerEntries       StudentLedgerEntry[]
+  payments            Payment[]
+  paymentLinks        PaymentLink[]
+  messages            Message[]
+  moratoriums         Moratorium[]
+  moratoriumChatLinks MoratoriumChatLink[]
 
   @@unique([tenantId, matricule])
   @@index([tenantId])
@@ -606,10 +641,12 @@ model Guardian {
   createdAt          DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt          DateTime                   @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  tenant            Tenant             @relation(fields: [tenantId], references: [id])
-  studentGuardians  StudentGuardian[]
-  reminderSchedules ReminderSchedule[]
-  messages          Message[]
+  tenant              Tenant               @relation(fields: [tenantId], references: [id])
+  studentGuardians    StudentGuardian[]
+  reminderSchedules   ReminderSchedule[]
+  messages            Message[]
+  moratoriums         Moratorium[]
+  moratoriumChatLinks MoratoriumChatLink[]
 
   @@index([tenantId])
   @@index([tenantId, phoneE164])
@@ -823,12 +860,14 @@ model Instalment {
   createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  tenant            Tenant               @relation(fields: [tenantId], references: [id])
-  invoice           Invoice              @relation(fields: [invoiceId], references: [id])
-  allocations       PaymentAllocation[]
-  paymentLinks      PaymentLink[]
-  ledgerEntries     StudentLedgerEntry[]
-  reminderSchedules ReminderSchedule[]
+  tenant              Tenant               @relation(fields: [tenantId], references: [id])
+  invoice             Invoice              @relation(fields: [invoiceId], references: [id])
+  allocations         PaymentAllocation[]
+  paymentLinks        PaymentLink[]
+  ledgerEntries       StudentLedgerEntry[]
+  reminderSchedules   ReminderSchedule[]
+  moratoriums         Moratorium[]
+  moratoriumChatLinks MoratoriumChatLink[]
 
   @@index([tenantId])
   @@index([invoiceId])
@@ -1191,6 +1230,9 @@ model ReminderRule {
   escalationLevel Int               @default(0) @map("escalation_level")
   isActive        Boolean           @default(true) @map("is_active")
   appliesTo       ReminderAppliesTo @default(all) @map("applies_to")
+  /// What `offset_days` counts from. Defaulted, so every rule that existed
+  /// before the moratoire keeps its exact current meaning.
+  basis           ReminderBasis     @default(due_date)
   createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -1255,6 +1297,10 @@ model Message {
 
   @@index([tenantId])
   @@index([guardianId])
+  // The sender counts today's messages against the guardian and tenant caps
+  // on every tick; without these it is two sequential scans per tenant.
+  @@index([tenantId, createdAt])
+  @@index([guardianId, createdAt])
   @@map("message")
 }
 
@@ -1273,7 +1319,95 @@ model MessageCreditLedgerEntry {
   tenant Tenant @relation(fields: [tenantId], references: [id])
 
   @@index([tenantId])
+  // The wallet balance is the LATEST row's balance_after_minor, read once
+  // per sender tick. Without this it is a scan of every top-up and debit the
+  // school has ever had.
+  @@index([tenantId, createdAt])
   @@map("message_credit_ledger")
+}
+
+/// A parent-requested delay on ONE instalment (ARCHITECTURE.md §8.5).
+///
+/// `instalment.due_on` is NEVER rewritten — reads compute
+/// `effectiveDueOn = moratorium?.deferredDueOn ?? instalment.dueOn`, so
+/// "was this actually late?" stays answerable for the whole year.
+///
+/// MUTABLE, unlike the money tables around it, and deliberately so: rule #2
+/// is about payments and ledger entries. A moratoire moves no francs,
+/// allocates nothing and writes no ledger row — it is a scheduling fact, and
+/// its closest analogue in this schema is reminder_schedule, which the
+/// settlement path already updates. The forensics an auditor needs are
+/// produced twice over: the global AuditInterceptor writes actor, IP and
+/// user-agent, and the row itself carries decidedAt/decidedBy/decisionNote.
+/// DELETE stays revoked repo-wide.
+model Moratorium {
+  id             String           @id @default(uuid()) @db.Uuid
+  tenantId       String           @map("tenant_id") @db.Uuid
+  instalmentId   String           @map("instalment_id") @db.Uuid
+  /// Denormalised: the public chat page and the bursar queue both need the
+  /// student without joining instalment → invoice → enrollment.
+  studentId      String           @map("student_id") @db.Uuid
+  /// Who asked. Null when a bursar granted one at the desk.
+  guardianId     String?          @map("guardian_id") @db.Uuid
+  status         MoratoriumStatus @default(pending)
+  source         MoratoriumSource
+  requestedDays  Int              @map("requested_days")
+  /// Kept even though it duplicates instalment.due_on today: if a future
+  /// correction ever moves the tranche, this still says what was deferred.
+  originalDueOn  DateTime         @map("original_due_on") @db.Date
+  deferredDueOn  DateTime         @map("deferred_due_on") @db.Date
+  /// Free text from a parent. Capped at 280 chars in Zod, and NEVER logged.
+  reason         String?
+  idempotencyKey String?          @map("idempotency_key")
+  requestedAt    DateTime         @default(now()) @map("requested_at") @db.Timestamptz(6)
+  decidedAt      DateTime?        @map("decided_at") @db.Timestamptz(6)
+  decidedBy      String?          @map("decided_by") @db.Uuid
+  decisionNote   String?          @map("decision_note")
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id])
+  instalment Instalment @relation(fields: [instalmentId], references: [id])
+  student    Student    @relation(fields: [studentId], references: [id])
+  guardian   Guardian?  @relation(fields: [guardianId], references: [id])
+
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("moratorium")
+}
+
+/// The token behind the link in a reminder message, scoped to ONE instalment
+/// and ONE guardian.
+///
+/// Separate from `payment_link` because it authorises something different
+/// and expires on a different clock: a pay link is about money, this is
+/// about a date, and this one dies once a moratoire could no longer mean
+/// anything. RLS-protected like everything else — the token carries the
+/// tenant so `GET /moratoire/:token` can open a context without a JWT.
+model MoratoriumChatLink {
+  id           String    @id @default(uuid()) @db.Uuid
+  tenantId     String    @map("tenant_id") @db.Uuid
+  instalmentId String    @map("instalment_id") @db.Uuid
+  studentId    String    @map("student_id") @db.Uuid
+  /// NOT NULL, unlike payment_link: the token says WHO is chatting, so a
+  /// request can be attributed without asking a parent to identify themselves.
+  guardianId   String    @map("guardian_id") @db.Uuid
+  token        String    @unique
+  expiresAt    DateTime  @map("expires_at") @db.Timestamptz(6)
+  consumedAt   DateTime? @map("consumed_at") @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id])
+  instalment Instalment @relation(fields: [instalmentId], references: [id])
+  student    Student    @relation(fields: [studentId], references: [id])
+  guardian   Guardian   @relation(fields: [guardianId], references: [id])
+
+  /// One link per guardian per instalment, so a re-run of the scheduler
+  /// reuses the token already in a family's message history.
+  @@unique([tenantId, instalmentId, guardianId])
+  @@index([tenantId])
+  @@map("moratorium_chat_link")
 }
 
 // ============================================================================
