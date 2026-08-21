@@ -22,6 +22,9 @@ export type { ProcessOutcome } from './payments/webhook-processor.service.js'
 export { encodePaymentReference, decodePaymentReference } from './payments/payment-reference.js'
 export type { PaymentReference } from './payments/payment-reference.js'
 
+export { mintTenantToken, parseTenantToken } from './shared/tenant-token.js'
+export type { TenantToken } from './shared/tenant-token.js'
+
 export { mintPayLinkToken, parsePayLinkToken } from './payments/pay-link-token.js'
 export type { PayLinkToken } from './payments/pay-link-token.js'
 
