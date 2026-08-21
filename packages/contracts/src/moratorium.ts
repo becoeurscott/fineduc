@@ -127,12 +127,25 @@ export function readMoratoriumPolicy(settings: unknown): MoratoriumPolicy {
 
 /* --------------------------------------------------- the public chat ---- */
 
+export const MoratoriumOfferOptionSchema = z.object({
+  days: z.number().int(),
+  /**
+   * The resulting date, computed SERVER-SIDE.
+   *
+   * The chat must never derive this: a browser clock in the wrong timezone
+   * would show a parent a different deadline from the one the school
+   * recorded, and they would plan around the wrong day.
+   */
+  deferredDueOn: CalendarDateSchema,
+})
+export type MoratoriumOfferOption = z.infer<typeof MoratoriumOfferOptionSchema>
+
 export const MoratoriumOfferSchema = z.object({
   available: z.boolean(),
   /** Populated only when `available` is false. */
   reason: MoratoriumBlockedReasonSchema.nullable(),
-  /** The buttons to render. Empty when unavailable. */
-  durationsDays: z.array(z.number().int()),
+  /** The buttons to render, each with its end date. Empty when unavailable. */
+  options: z.array(MoratoriumOfferOptionSchema),
   /** The furthest date on offer, so the chat can state it before asking. */
   latestDeferredDueOn: CalendarDateSchema.nullable(),
   /**

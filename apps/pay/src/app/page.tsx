@@ -1,4 +1,12 @@
-// TODO: PUBLIC payment link page. No auth, no PII in the URL, rate-limited. Shows a first name and a masked matricule only.
-// ref: ARCHITECTURE.md section 10
+/**
+ * The root of the public app is intentionally not a page.
+ *
+ * Everything here is reached by a tokenised link. A landing page would only
+ * ever be found by someone probing, and would tell them this host exists and
+ * what it is for.
+ */
+import { notFound } from 'next/navigation'
 
-export {}
+export default function Index() {
+  notFound()
+}

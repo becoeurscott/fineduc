@@ -4,6 +4,13 @@
  * Nothing above this package may reference a provider by name (AGENTS.md
  * rule #8). Callers depend on the PORT; which adapter is behind it is a
  * configuration decision, not a code one.
+ *
+ * The CONTRACT SUITES are deliberately NOT exported here. `port.contract.ts`
+ * does `import { describe, it } from 'vitest'`, and re-exporting it from the
+ * package root drags vitest into every runtime that imports this package —
+ * the API crashed at boot on it, and in production, where devDependencies
+ * are not installed, it would crash there too. Each adapter's spec imports
+ * the suite by relative path instead, which is what they already did.
  */
 export { ProviderError } from './provider-error.js'
 export type {
@@ -25,8 +32,6 @@ export type { CinetPayOptions } from './payment/adapters/cinetpay.js'
 export { postJson, DEFAULT_POLICY, HttpTimeoutError } from './http.js'
 export type { FetchLike, HttpPolicy } from './http.js'
 
-export { runPaymentProviderContract } from './payment/port.contract.js'
-export type { ProviderCapabilities } from './payment/port.contract.js'
 
 /* ------------------------------------------------------------ messaging -- */
 
@@ -47,6 +52,3 @@ export { ConsoleMessagingProvider } from './messaging/adapters/console.js'
 export type { ConsoleMessagingOptions } from './messaging/adapters/console.js'
 export { FakeMessagingProvider } from './messaging/adapters/fake.js'
 export type { FakeMessagingOptions, FakeSentMessage } from './messaging/adapters/fake.js'
-
-export { runMessagingProviderContract } from './messaging/port.contract.js'
-export type { MessagingCapabilities } from './messaging/port.contract.js'

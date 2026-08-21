@@ -110,7 +110,10 @@ REST `/api/v1`, Bearer JWT, OpenAPI from Zod. Cursor pagination. RFC 9457 proble
 Money on the wire: `{ "amountMinor": "45000", "currency": "XAF" }` — **a string**, so no client
 loses precision. Due dates: plain `YYYY-MM-DD`.
 Public, unauthenticated, hostile-territory endpoints: `GET /pay/:token`,
-`POST /pay/:token/initiate`, `POST /webhooks/*`.
+`POST /pay/:token/initiate`, `GET /moratoire/:token`,
+`POST /moratoire/:token/request`, `POST /webhooks/*`.
+All are IP rate-limited — never keyed by token, which would let anyone who
+saw a forwarded link lock a family out of their own page.
 
 ## Build order — backend first, strictly
 1 foundation (money, schema, **RLS + cross-tenant test**) → 2 identity/tenancy → 3 students →

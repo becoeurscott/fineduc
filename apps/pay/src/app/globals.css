@@ -1,0 +1,23 @@
+@import "@fineduc/ui/theme.css";
+
+/*
+ * Tailwind v4 auto-detects sources relative to this file and EXCLUDES
+ * node_modules — which is where a pnpm workspace package is symlinked.
+ * Without this line, any utility used only inside packages/ui is never
+ * generated and the component renders with zero height or a transparent
+ * background. It fails SILENTLY: no build error, no console warning.
+ *
+ * Verified on the dashboard: without it the RecoveryMeter track computed to
+ * height:0. The same trap applies here, so the same line does.
+ */
+@source "../../../../packages/ui/src";
+
+/*
+ * This app is read on a cheap Android over 2G, held one-handed, often
+ * outdoors. Bigger base text and generous tap targets are not a preference
+ * here — they are what makes it usable at all.
+ */
+body {
+  font-size: 17px;
+  line-height: 1.6;
+}

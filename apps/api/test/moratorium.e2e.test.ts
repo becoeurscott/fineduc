@@ -242,7 +242,13 @@ describe('Le moratoire (real Postgres)', () => {
       expect(response.body.amountDue).toEqual({ amountMinor: '45000', currency: 'XAF' })
       expect(response.body.approvalMode).toBe('manual')
       expect(response.body.offer.available).toBe(true)
-      expect(response.body.offer.durationsDays).toEqual([7, 14, 21])
+      expect(response.body.offer.options.map((o: Any) => o.days)).toEqual([7, 14, 21])
+      // Every button carries the date it leads to, computed server-side.
+      expect(response.body.offer.options.map((o: Any) => o.deferredDueOn)).toEqual([
+        plusDays(14 + 7),
+        plusDays(14 + 14),
+        plusDays(14 + 21),
+      ])
     })
 
     /**

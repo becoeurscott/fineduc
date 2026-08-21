@@ -4,14 +4,52 @@
     {
       "name": "web",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@fineduc/web", "exec", "next", "dev"],
+      "runtimeArgs": [
+        "--filter",
+        "@fineduc/web",
+        "exec",
+        "next",
+        "dev"
+      ],
       "autoPort": true
     },
     {
       "name": "dashboard",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@fineduc/dashboard", "exec", "next", "dev"],
+      "runtimeArgs": [
+        "--filter",
+        "@fineduc/dashboard",
+        "exec",
+        "next",
+        "dev"
+      ],
       "autoPort": true
+    },
+    {
+      "name": "api",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@fineduc/api",
+        "exec",
+        "node",
+        "dist/main.js"
+      ],
+      "port": 3010
+    },
+    {
+      "name": "pay",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@fineduc/pay",
+        "exec",
+        "next",
+        "dev",
+        "--port",
+        "3030"
+      ],
+      "port": 3030
     }
   ]
 }

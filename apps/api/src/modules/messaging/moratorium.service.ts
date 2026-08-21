@@ -88,14 +88,21 @@ export class MoratoriumService {
           ? {
               available: true,
               reason: null,
-              durationsDays: [...offer.durationsDays],
+              // Each option carries its own end date, computed here. The chat
+              // never does date arithmetic — a browser clock in the wrong
+              // timezone would show a parent a different deadline from the
+              // one the school recorded.
+              options: offer.durationsDays.map((days) => ({
+                days,
+                deferredDueOn: computeDeferredDueOn(ctx.context.instalment.dueOn, days),
+              })),
               latestDeferredDueOn: offer.latestDeferredDueOn,
               collidesWithNextInstalment: offer.collidesWithNextInstalment,
             }
           : {
               available: false,
               reason: offer.reason,
-              durationsDays: [],
+              options: [],
               latestDeferredDueOn: null,
               collidesWithNextInstalment: false,
             },
