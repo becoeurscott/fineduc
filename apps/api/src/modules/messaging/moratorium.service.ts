@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common'
+import { Inject, Injectable, Optional } from '@nestjs/common'
 import { withTenant, type PrismaClient, type TenantTransactionClient } from '@fineduc/db'
 import { Money, assertCurrencyCode } from '@fineduc/money'
 import {
@@ -22,10 +22,14 @@ import {
   type MoratoriumListItem,
   type MoratoriumRequestInput,
   type MoratoriumRequestResult,
+  type ParseDelayResult,
   type StaffGrantMoratoriumInput,
 } from '@fineduc/contracts'
 import { ReminderSchedulingService, parseTenantToken } from '@fineduc/services'
 import { readMessagingSettings } from '@fineduc/contracts'
+import type { DateRequestParser } from '@fineduc/providers'
+
+export const DATE_REQUEST_PARSER = Symbol('DATE_REQUEST_PARSER')
 
 /**
  * Le moratoire (ARCHITECTURE.md §8.5b).
@@ -43,7 +47,10 @@ import { readMessagingSettings } from '@fineduc/contracts'
  */
 @Injectable()
 export class MoratoriumService {
-  constructor(private readonly scheduling: ReminderSchedulingService) {}
+  constructor(
+    private readonly scheduling: ReminderSchedulingService,
+    @Optional() @Inject(DATE_REQUEST_PARSER) private readonly parser: DateRequestParser | null,
+  ) {}
 
   /* ------------------------------------------------------- public chat -- */
 
@@ -244,6 +251,43 @@ export class MoratoriumService {
       reason: null,
       mayAskAgain: false,
     }
+  }
+
+  /* ------------------------------------------------- free-text parsing -- */
+
+  /**
+   * `POST /moratoire/:token/parse` — LLM fallback for typed input.
+   *
+   * Read-only: returns the parsed duration so the UI can pre-select a button,
+   * but moves no date. The parent still confirms through the existing request
+   * flow. If no parser is configured, returns null.
+   */
+  async parseDelay(
+    prisma: PrismaClient,
+    token: string,
+    text: string,
+    now: Date,
+  ): Promise<ParseDelayResult> {
+    if (!this.parser) return { days: null, deferredDueOn: null }
+
+    const parsed = parseTenantToken(token)
+    if (!parsed) throw new NotFoundError('moratorium_chat_link', 'token')
+
+    return withTenant(prisma, parsed.tenantId, async (tx) => {
+      const link = await this.findLink(tx, parsed.tenantId, token, now)
+      const ctx = await this.loadContext(tx, parsed.tenantId, link.instalmentId, now)
+      const offer = decideMoratoriumOffer(ctx.context)
+      if (!offer.offer) return { days: null, deferredDueOn: null }
+
+      const guardian = await tx.guardian.findUniqueOrThrow({ where: { id: link.guardianId } })
+      const locale = guardian.preferredLocale === 'en' ? 'en' : 'fr'
+
+      const result = await this.parser!.parse(text, offer.durationsDays, locale)
+      if (result.days === null) return { days: null, deferredDueOn: null }
+
+      const deferredDueOn = computeDeferredDueOn(ctx.context.instalment.dueOn, result.days)
+      return { days: result.days, deferredDueOn }
+    })
   }
 
   /* ------------------------------------------------------ staff-facing -- */

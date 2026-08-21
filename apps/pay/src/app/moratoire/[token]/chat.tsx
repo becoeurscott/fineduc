@@ -30,9 +30,37 @@ export function MoratoireChat({ token, view }: { token: string; view: Moratorium
   const [days, setDays] = useState<number | null>(null)
   const [reason, setReason] = useState('')
   const [result, setResult] = useState<MoratoriumRequestResult | null>(null)
+  const [freeText, setFreeText] = useState('')
+  const [parsing, setParsing] = useState(false)
+  const [parseError, setParseError] = useState(false)
 
   const amount = `${Number(view.amountDue.amountMinor).toLocaleString(locale === 'fr' ? 'fr-FR' : 'en-GB')} FCFA`
   const chosen = view.offer.options.find((option) => option.days === days) ?? null
+
+  async function parseText() {
+    if (freeText.trim() === '') return
+    setParsing(true)
+    setParseError(false)
+    try {
+      const response = await fetch(`/api/moratoire/${encodeURIComponent(token)}/parse`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ text: freeText.trim() }),
+      })
+      if (!response.ok) { setParseError(true); return }
+      const parsed = (await response.json()) as { days: number | null; deferredDueOn: string | null }
+      if (parsed.days !== null) {
+        setDays(parsed.days)
+        setStep('confirming')
+      } else {
+        setParseError(true)
+      }
+    } catch {
+      setParseError(true)
+    } finally {
+      setParsing(false)
+    }
+  }
 
   async function submit() {
     if (days === null) return
@@ -88,6 +116,40 @@ export function MoratoireChat({ token, view }: { token: string; view: Moratorium
                 </span>
               </Choice>
             ))}
+          </div>
+
+          {/* Free-text fallback for parents who type instead of tapping. */}
+          <div className="mt-3 flex flex-col gap-2">
+            <label className="text-sm text-muted">
+              {locale === 'fr' ? 'Ou décrivez votre besoin :' : 'Or describe what you need:'}
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                maxLength={280}
+                value={freeText}
+                onChange={(e) => { setFreeText(e.target.value); setParseError(false) }}
+                onKeyDown={(e) => { if (e.key === 'Enter') void parseText() }}
+                placeholder={locale === 'fr' ? 'Ex. : après la paie' : 'e.g. after payday'}
+                disabled={parsing}
+                className="min-h-[44px] flex-1 rounded-xl border border-line bg-white px-3 text-base text-ink placeholder:text-muted/50"
+              />
+              <button
+                type="button"
+                onClick={() => void parseText()}
+                disabled={parsing || freeText.trim() === ''}
+                className="min-h-[44px] rounded-xl bg-accent/10 px-4 text-sm font-medium text-accent disabled:opacity-40"
+              >
+                {parsing ? '…' : '→'}
+              </button>
+            </div>
+            {parseError && (
+              <p className="text-sm text-warning">
+                {locale === 'fr'
+                  ? 'Nous n\'avons pas compris. Choisissez un délai ci-dessus.'
+                  : 'We didn\'t understand. Please choose a delay above.'}
+              </p>
+            )}
           </div>
         </>
       )}

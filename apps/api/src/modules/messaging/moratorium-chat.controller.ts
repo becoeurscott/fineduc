@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Post } from '@nestjs/common'
-import { MoratoriumRequestInputSchema } from '@fineduc/contracts'
+import { MoratoriumRequestInputSchema, ParseDelayInputSchema } from '@fineduc/contracts'
 import { Public } from '../../common/decorators/public.decorator.js'
 import { SkipAudit } from '../../common/decorators/skip-audit.decorator.js'
 import { PrismaService } from '../platform/prisma.service.js'
@@ -38,5 +38,20 @@ export class MoratoriumChatController {
   async request(@Param('token') token: string, @Body() body: unknown) {
     const input = MoratoriumRequestInputSchema.parse(body)
     return this.moratoriums.request(this.prisma.client, token, input, new Date())
+  }
+
+  /**
+   * `POST /moratoire/:token/parse` — LLM fallback for free-text input.
+   *
+   * Returns a parsed duration from the school's allowlist, or null. This
+   * does NOT move any date — the parent still confirms via the existing
+   * request flow. Read-only, so `@SkipAudit`.
+   */
+  @Public()
+  @SkipAudit()
+  @Post(':token/parse')
+  async parseDelay(@Param('token') token: string, @Body() body: unknown) {
+    const input = ParseDelayInputSchema.parse(body)
+    return this.moratoriums.parseDelay(this.prisma.client, token, input.text, new Date())
   }
 }

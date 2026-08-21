@@ -91,6 +91,20 @@ async function bootstrap() {
       status: 429,
     },
   })
+  // The parse endpoint calls an LLM — tighter limit than the page views.
+  const parseLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+      type: 'https://fineduc.com/errors/TOO_MANY_REQUESTS',
+      title: 'Too Many Requests',
+      status: 429,
+    },
+  })
+  app.use('/moratoire/:token/parse', parseLimiter)
+
   app.use('/pay', publicPageLimiter)
   app.use('/moratoire', publicPageLimiter)
 

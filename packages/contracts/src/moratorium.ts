@@ -207,6 +207,26 @@ export const MoratoriumRequestResultSchema = z.object({
 })
 export type MoratoriumRequestResult = z.infer<typeof MoratoriumRequestResultSchema>
 
+/* -------------------------------------------- free-text delay parsing -- */
+
+/**
+ * `POST /moratoire/:token/parse` — the fallback for parents who type instead
+ * of tapping a button. The LLM maps their text to a duration from the
+ * school's allowlist; the domain still decides eligibility.
+ */
+export const ParseDelayInputSchema = z.object({
+  text: z.string().min(1).max(280),
+})
+export type ParseDelayInput = z.infer<typeof ParseDelayInputSchema>
+
+export const ParseDelayResultSchema = z.object({
+  /** A value from the school's allowedDurationsDays, or null when unparseable. */
+  days: z.number().int().min(1).max(MAX_MORATORIUM_DAYS).nullable(),
+  /** The server-computed end date for the parsed duration, if any. */
+  deferredDueOn: z.string().nullable(),
+})
+export type ParseDelayResult = z.infer<typeof ParseDelayResultSchema>
+
 /* -------------------------------------------------------- staff-facing -- */
 
 export const MoratoriumListItemSchema = z.object({

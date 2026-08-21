@@ -49,6 +49,13 @@ export { priceMessage, DEFAULT_UNIT_COSTS } from './messaging/cost.js'
 export type { UnitCosts } from './messaging/cost.js'
 
 export { ConsoleMessagingProvider } from './messaging/adapters/console.js'
+
+/* -------------------------------------------------------------- parser -- */
+
+export type { DateRequestParser, ParseDelayResult } from './parser/port.js'
+export { FakeDateRequestParser } from './parser/adapters/fake.js'
+export { HaikuDateRequestParser } from './parser/adapters/haiku.js'
+export type { HaikuParserOptions } from './parser/adapters/haiku.js'
 export type { ConsoleMessagingOptions } from './messaging/adapters/console.js'
 export { FakeMessagingProvider } from './messaging/adapters/fake.js'
 export type { FakeMessagingOptions, FakeSentMessage } from './messaging/adapters/fake.js'
