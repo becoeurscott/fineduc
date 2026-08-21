@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { toTenantDate, parseTenantDate } from './tenant-date.js'
+import { toTenantDate, parseTenantDate, tenantLocalToInstant } from './tenant-date.js'
 
 describe('toTenantDate', () => {
   it('converts UTC instant to Africa/Douala date (UTC+1)', () => {
@@ -38,5 +38,52 @@ describe('parseTenantDate', () => {
     expect(() => parseTenantDate('2026/09/15')).toThrow('Invalid date format')
     expect(() => parseTenantDate('not-a-date')).toThrow('Invalid date format')
     expect(() => parseTenantDate('')).toThrow('Invalid date format')
+  })
+})
+
+describe('tenantLocalToInstant', () => {
+  it('resolves a wall-clock hour to the right instant in a fixed-offset zone', () => {
+    // Africa/Douala is UTC+1 all year — 09:00 local is 08:00Z.
+    const instant = tenantLocalToInstant('2026-09-15', 9, 'Africa/Douala')
+    expect(instant.toISOString()).toBe('2026-09-15T08:00:00.000Z')
+  })
+
+  it('round-trips through toTenantDate', () => {
+    const instant = tenantLocalToInstant('2026-09-15', 9, 'Africa/Douala')
+    expect(toTenantDate(instant, 'Africa/Douala')).toBe('2026-09-15')
+  })
+
+  /**
+   * The reason this function exists rather than "add one hour to a UTC
+   * midnight". Morocco sits at UTC+1 all year EXCEPT during Ramadan, when it
+   * drops to UTC+0 — a real, moving, non-obvious offset change. A reminder
+   * built with a constant offset goes out an hour wrong for a month, every
+   * year, on a date that shifts.
+   *
+   * 2026-03-01 falls inside Ramadan; 2026-06-15 does not (verified against
+   * this Node's ICU data, not assumed).
+   */
+  it('follows a zone whose offset changes during the year', () => {
+    const duringRamadan = tenantLocalToInstant('2026-03-01', 9, 'Africa/Casablanca')
+    const after = tenantLocalToInstant('2026-06-15', 9, 'Africa/Casablanca')
+
+    expect(duringRamadan.toISOString()).toBe('2026-03-01T09:00:00.000Z') // UTC+0
+    expect(after.toISOString()).toBe('2026-06-15T08:00:00.000Z') // UTC+1
+
+    // Both still read back as 09:00 on the right calendar day, which is the
+    // property that actually matters to a parent.
+    expect(toTenantDate(duringRamadan, 'Africa/Casablanca')).toBe('2026-03-01')
+    expect(toTenantDate(after, 'Africa/Casablanca')).toBe('2026-06-15')
+  })
+
+  it('handles midnight, where some ICU builds report hour 24', () => {
+    const instant = tenantLocalToInstant('2026-09-15', 0, 'Africa/Douala')
+    expect(toTenantDate(instant, 'Africa/Douala')).toBe('2026-09-15')
+    expect(instant.toISOString()).toBe('2026-09-14T23:00:00.000Z')
+  })
+
+  it('rejects something that is not an hour', () => {
+    expect(() => tenantLocalToInstant('2026-09-15', 24, 'Africa/Douala')).toThrow(RangeError)
+    expect(() => tenantLocalToInstant('2026-09-15', -1, 'Africa/Douala')).toThrow(RangeError)
   })
 })

@@ -28,5 +28,8 @@ export type { TenantToken } from './shared/tenant-token.js'
 export { mintPayLinkToken, parsePayLinkToken } from './payments/pay-link-token.js'
 export type { PayLinkToken } from './payments/pay-link-token.js'
 
+export { ReminderSchedulingService, SUPPRESSED_BY_MORATORIUM } from './messaging/reminder-scheduling.service.js'
+export type { MaterialiseParams, MaterialiseResult } from './messaging/reminder-scheduling.service.js'
+
 export { consoleLogger } from './logger.js'
 export type { Logger } from './logger.js'

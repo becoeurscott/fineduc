@@ -17,7 +17,7 @@ export {
   AuthenticationError,
 } from './shared/errors.js'
 
-export { toTenantDate, parseTenantDate } from './shared/tenant-date.js'
+export { toTenantDate, parseTenantDate, tenantLocalToInstant } from './shared/tenant-date.js'
 
 // Billing (ARCHITECTURE.md §6, §8.1)
 export {
