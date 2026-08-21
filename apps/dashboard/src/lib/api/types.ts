@@ -27,6 +27,9 @@ import type {
   MessageCredits,
   MessageLogItem,
   MessageTemplate,
+  MoratoriumListItem,
+  MoratoriumPolicy,
+  MoratoriumStatus,
   PaymentListItem,
   PaymentQuery,
   ReminderRule,
@@ -68,6 +71,14 @@ export interface DashboardApi {
    * radius — recipient count and cost — before confirming.
    */
   previewReminder(input: { studentIds: string[]; channel: 'whatsapp' | 'sms' }): Promise<SendReminderPreview>
+
+  /* -------------------------------------------------------- moratoire -- */
+
+  listMoratoriums(status?: MoratoriumStatus): Promise<MoratoriumListItem[]>
+  approveMoratorium(id: string, note?: string): Promise<void>
+  refuseMoratorium(id: string, note: string): Promise<void>
+  getMoratoriumPolicy(): Promise<MoratoriumPolicy>
+  updateMoratoriumPolicy(policy: MoratoriumPolicy): Promise<void>
 
   listStaff(): Promise<StaffUser[]>
   listAcademicYears(): Promise<AcademicYear[]>

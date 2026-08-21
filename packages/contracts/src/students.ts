@@ -50,7 +50,19 @@ export const InstalmentSchema = z.object({
   id: UuidSchema,
   sequence: z.number().int().positive(),
   label: z.string(),
+  /** The ORIGINAL date. Never rewritten, so "was this late?" stays answerable. */
   dueOn: CalendarDateSchema,
+  /**
+   * The date to act on: `moratorium.deferredDueOn ?? dueOn`.
+   *
+   * BOTH are on the wire so the UI can show the original struck through
+   * beside the new one. The client computes neither — a browser deriving a
+   * deadline would eventually show a family a different day from the one the
+   * school recorded.
+   */
+  effectiveDueOn: CalendarDateSchema,
+  /** Set only while a granted moratoire is running. */
+  moratoriumUntil: CalendarDateSchema.nullable(),
   amount: MoneySchema,
   allocated: MoneySchema,
   remaining: MoneySchema,

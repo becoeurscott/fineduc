@@ -10,6 +10,9 @@
  * during development rather than discovered in production on a 3G phone.
  */
 import type {
+  MoratoriumListItem,
+  MoratoriumPolicy,
+  MoratoriumStatus,
   AcademicYear,
   AuditLogItem,
   CashSession,
@@ -39,6 +42,8 @@ import {
   MESSAGE_CREDITS,
   MESSAGE_LOG,
   MESSAGE_TEMPLATES,
+  MORATORIUM_POLICY,
+  MORATORIUMS,
   OVERVIEW,
   PAYMENTS,
   REMINDER_RULES,
@@ -66,6 +71,9 @@ function matchesSearch(student: (typeof STUDENTS)[number], search?: string): boo
 }
 
 export class MockApi implements DashboardApi {
+  private moratoriums: MoratoriumListItem[] = [...MORATORIUMS]
+  private policy: MoratoriumPolicy = { ...MORATORIUM_POLICY }
+
   getCurrentUser(): Promise<CurrentUser> {
     return delay(CURRENT_USER)
   }
@@ -171,6 +179,43 @@ export class MockApi implements DashboardApi {
       skipped: { alreadyPaid, optedOut: 0, quarantined: 0 },
       exceedsBalance: estimated > Number(MESSAGE_CREDITS.balance.amountMinor),
     })
+  }
+
+  /* -------------------------------------------------------- moratoire -- */
+
+  listMoratoriums(status?: MoratoriumStatus): Promise<MoratoriumListItem[]> {
+    const rows = status ? this.moratoriums.filter((row) => row.status === status) : this.moratoriums
+    return delay(rows)
+  }
+
+  /*
+   * Mutating a module-level array is exactly what a mock is for: the queue
+   * has to empty as a bursar works it, or the screen cannot be judged. The
+   * real implementation is an HTTP call and lands with HttpApi (phase 9).
+   */
+  approveMoratorium(id: string, note?: string): Promise<void> {
+    this.decide(id, 'granted', note ?? null)
+    return delay(undefined)
+  }
+
+  refuseMoratorium(id: string, note: string): Promise<void> {
+    this.decide(id, 'refused', note)
+    return delay(undefined)
+  }
+
+  private decide(id: string, status: MoratoriumStatus, note: string | null): void {
+    this.moratoriums = this.moratoriums.map((row) =>
+      row.id === id ? { ...row, status, decisionNote: note, decidedAt: new Date().toISOString() } : row,
+    )
+  }
+
+  getMoratoriumPolicy(): Promise<MoratoriumPolicy> {
+    return delay(this.policy)
+  }
+
+  updateMoratoriumPolicy(policy: MoratoriumPolicy): Promise<void> {
+    this.policy = policy
+    return delay(undefined)
   }
 
   listStaff(): Promise<StaffUser[]> {

@@ -38,6 +38,8 @@ export const qk = {
   messageTemplates: ['message-templates'] as const,
   messageLog: ['message-log'] as const,
   messageCredits: ['message-credits'] as const,
+  moratoriums: (status?: string) => ['moratoriums', status ?? 'all'] as const,
+  moratoriumPolicy: ['moratorium-policy'] as const,
   staff: ['staff'] as const,
   academicYears: ['academic-years'] as const,
   settings: ['settings'] as const,

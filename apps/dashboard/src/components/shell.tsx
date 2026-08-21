@@ -28,6 +28,7 @@ const NAV: NavItem[] = [
   { href: '/payments', labelKey: 'nav.payments', capability: 'dashboard.view', icon: '⇄' },
   { href: '/fees', labelKey: 'nav.fees', capability: 'fees.publish', icon: '▦' },
   { href: '/reminders', labelKey: 'nav.reminders', capability: 'reminders.send', icon: '◌' },
+  { href: '/moratoires', labelKey: 'nav.moratoires', capability: 'moratorium.view', icon: '◷' },
   { href: '/admin', labelKey: 'nav.admin', capability: 'users.manage', icon: '⚙' },
 ]
 

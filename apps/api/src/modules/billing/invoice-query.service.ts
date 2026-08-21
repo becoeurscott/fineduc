@@ -27,7 +27,9 @@ export class InvoiceQueryService {
       include: {
         lines: { include: { feeItem: true } },
         discounts: true,
-        instalments: true,
+        // Only a GRANTED moratoire moves a date; a pending request has
+        // promised the family nothing yet.
+        instalments: { include: { moratoriums: { where: { status: 'granted' }, take: 1 } } },
         enrollment: {
           include: {
             student: true,
@@ -89,11 +91,15 @@ export class InvoiceQueryService {
         .sort((a, b) => a.sequence - b.sequence)
         .map((instalment) => {
           const dueOn = this.date(instalment.dueOn)
+          const moratorium = instalment.moratoriums[0]
+          const moratoriumUntil = moratorium ? this.date(moratorium.deferredDueOn) : null
           return {
             id: instalment.id,
             sequence: instalment.sequence,
             label: instalment.label,
             dueOn,
+            effectiveDueOn: moratoriumUntil ?? dueOn,
+            moratoriumUntil,
             amount: this.money(instalment.amountMinor, currency),
             allocated: this.money(instalment.allocatedMinor, currency),
             remaining: this.money(instalment.amountMinor - instalment.allocatedMinor, currency),

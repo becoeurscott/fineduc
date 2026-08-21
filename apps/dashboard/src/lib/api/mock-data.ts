@@ -16,6 +16,8 @@
  * Everything is XAF, exponent 0 — amounts are whole francs, never centimes.
  */
 import type {
+  MoratoriumListItem,
+  MoratoriumPolicy,
   AcademicYear,
   AuditLogItem,
   CashSession,
@@ -248,11 +250,20 @@ export function buildStudentFile(row: MockStudent): StudentFile {
     const dueOn = ['2026-09-16', '2026-12-15', '2027-03-15'][i] as string
     const status =
       allocated === amount ? 'paid' : allocated > 0 ? 'partial' : row.daysOverdue > 0 && i === 0 ? 'overdue' : 'pending'
+    /*
+     * One student in the fixture set carries a granted moratoire on their
+     * second tranche, so the struck-through original date and the chip are
+     * actually visible while the screen is being built. The ORIGINAL date is
+     * never overwritten — that is the whole point of the two fields.
+     */
+    const moratoriumUntil = row.paid > 0 && row.paid < FEE_TOTAL && i === 1 ? '2027-01-05' : null
     return {
       id: `${row.id}-inst-${i + 1}`,
       sequence: i + 1,
       label: ['1ère tranche', '2ème tranche', '3ème tranche'][i] as string,
       dueOn,
+      effectiveDueOn: moratoriumUntil ?? dueOn,
+      moratoriumUntil,
       amount: money(amount),
       allocated: money(allocated),
       remaining: money(amount - allocated),
@@ -526,3 +537,82 @@ export const AUDIT_LOG: AuditLogItem[] = [
   { id: 'al-4', occurredAt: '2026-08-17T16:48:00.000Z', actorName: 'Directeur Fondateur', actorRole: 'director', action: 'discount.approve', entityType: 'discount', entityId: 'dsc-0012', ip: '41.202.219.9' },
   { id: 'al-5', occurredAt: '2026-08-17T10:22:00.000Z', actorName: 'Serge Fouda', actorRole: 'secretary', action: 'student.update', entityType: 'student', entityId: 'stu-0044', ip: '41.202.219.14' },
 ]
+
+/* --------------------------------------------------------- moratoire ---- */
+
+/**
+ * A pending queue with the two cases a bursar actually has to think about:
+ * a first-time request from a family that pays reliably, and a second one on
+ * a tranche this school already refused once.
+ */
+export const MORATORIUMS: MoratoriumListItem[] = [
+  {
+    id: 'mor-0001',
+    studentId: STUDENTS[0]?.id ?? 'stu-0001',
+    studentName: 'Aïcha Mballa',
+    className: '6e A',
+    instalmentId: 'inst-0001',
+    instalmentLabel: 'Tranche 2',
+    amountDue: money(45_000),
+    status: 'pending',
+    source: 'chatbot',
+    requestedDays: 14,
+    originalDueOn: '2026-11-15',
+    deferredDueOn: '2026-11-29',
+    reason: 'Salaire versé en fin de mois',
+    requestedAt: '2026-11-03T08:12:00.000Z',
+    decidedAt: null,
+    decisionNote: null,
+    priorRefusals: 0,
+  },
+  {
+    id: 'mor-0002',
+    studentId: STUDENTS[1]?.id ?? 'stu-0002',
+    studentName: 'Boris Ngo Bikoy',
+    className: '5e B',
+    instalmentId: 'inst-0002',
+    instalmentLabel: 'Tranche 2',
+    amountDue: money(45_000),
+    status: 'pending',
+    source: 'chatbot',
+    requestedDays: 21,
+    originalDueOn: '2026-11-15',
+    deferredDueOn: '2026-12-06',
+    reason: null,
+    requestedAt: '2026-11-04T19:41:00.000Z',
+    decidedAt: null,
+    // The school allows a second attempt, so a bursar needs to SEE they are
+    // being asked twice on the same tranche.
+    decisionNote: null,
+    priorRefusals: 1,
+  },
+  {
+    id: 'mor-0003',
+    studentId: STUDENTS[2]?.id ?? 'stu-0003',
+    studentName: 'Chantal Fouda',
+    className: '6e A',
+    instalmentId: 'inst-0003',
+    instalmentLabel: 'Tranche 1',
+    amountDue: money(45_000),
+    status: 'granted',
+    source: 'staff',
+    requestedDays: 7,
+    originalDueOn: '2026-10-01',
+    deferredDueOn: '2026-10-08',
+    reason: null,
+    requestedAt: '2026-09-29T10:05:00.000Z',
+    decidedAt: '2026-09-29T10:06:00.000Z',
+    decisionNote: 'Accordé au guichet',
+    priorRefusals: 0,
+  },
+]
+
+/** What the seeded dev school has configured. */
+export const MORATORIUM_POLICY: MoratoriumPolicy = {
+  enabled: true,
+  approval: 'manual',
+  allowedDurationsDays: [7, 14, 21],
+  offerFromDaysBeforeDue: 14,
+  lateGraceDays: 7,
+  refusalFreesSlot: true,
+}

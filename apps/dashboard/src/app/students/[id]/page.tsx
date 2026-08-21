@@ -129,7 +129,22 @@ export default function StudentFilePage({ params }: { params: Promise<{ id: stri
                   {data.instalments.map((inst) => (
                     <Tr key={inst.id}>
                       <Td className="font-medium">{inst.label}</Td>
-                      <Td className="text-slate">{inst.dueOn}</Td>
+                      <Td className="text-slate">
+                        {inst.moratoriumUntil ? (
+                          <>
+                            {/* The original stays visible and struck through:
+                                a moratoire moves the deadline, it does not
+                                erase what the family originally agreed to,
+                                and "was this late?" is asked all year. */}
+                            <s className="text-muted">{inst.dueOn}</s>{' '}
+                            <span className="font-medium text-ink">{inst.effectiveDueOn}</span>
+            {' '}
+                            <Badge tone="accent">{t('students.moratorium')}</Badge>
+                          </>
+                        ) : (
+                          inst.dueOn
+                        )}
+                      </Td>
                       <Td align="right">
                         <Amount value={inst.amount} locale={intlLocale} size="sm" />
                       </Td>

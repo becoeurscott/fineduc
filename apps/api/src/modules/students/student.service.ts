@@ -191,7 +191,13 @@ export class StudentService {
             academicYear: { select: { name: true } },
             invoice: {
               include: {
-                instalments: { orderBy: { sequence: 'asc' } },
+                instalments: {
+                  orderBy: { sequence: 'asc' },
+                  // Only a GRANTED moratoire moves a date. A pending request
+                  // has promised the family nothing yet, so the file must not
+                  // show a delay nobody has approved.
+                  include: { moratoriums: { where: { status: 'granted' }, take: 1 } },
+                },
                 ledgerEntries: { orderBy: { occurredOn: 'asc' } },
               },
             },
@@ -267,11 +273,21 @@ export class StudentService {
     const instalments =
       invoice?.instalments.map((inst) => {
         const remainingMinor = (inst.amountMinor - inst.allocatedMinor).toString()
+        const dueOn = inst.dueOn.toISOString().split('T')[0] as string
+        const moratorium = inst.moratoriums[0]
+        const moratoriumUntil = moratorium
+          ? (moratorium.deferredDueOn.toISOString().split('T')[0] as string)
+          : null
         return {
           id: inst.id,
           sequence: inst.sequence,
           label: inst.label,
-          dueOn: inst.dueOn.toISOString().split('T')[0] as string,
+          dueOn,
+          // Derived here, never in the browser: a client computing a deadline
+          // would eventually show a family a different day from the one the
+          // school recorded.
+          effectiveDueOn: moratoriumUntil ?? dueOn,
+          moratoriumUntil,
           amount: moneyWire(inst.amountMinor, currency),
           allocated: moneyWire(inst.allocatedMinor, currency),
           remaining: moneyWire(remainingMinor, currency),
