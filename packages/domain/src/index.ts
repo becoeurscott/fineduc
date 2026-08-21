@@ -88,3 +88,23 @@ export type { EligibilityDecision, SendContext, SkipReason, DeferReason } from '
 
 export { render, placeholdersIn, assertTemplateSatisfiable, smsSegments } from './messaging/render.js'
 export type { RenderResult } from './messaging/render.js'
+
+export {
+  MAX_MORATORIUM_DAYS,
+  computeDeferredDueOn,
+  effectiveDueOn,
+  isMoratoriumActive,
+  blocksNewRequest,
+  decideMoratoriumOffer,
+  decideMoratoriumRequest,
+  moratoriumTransition,
+} from './messaging/moratorium.js'
+export type {
+  MoratoriumStatus,
+  MoratoriumPolicy,
+  MoratoriumContext,
+  MoratoriumOffer,
+  MoratoriumRequestDecision,
+  OfferBlockedReason,
+  RequestRejection,
+} from './messaging/moratorium.js'
