@@ -76,9 +76,15 @@ repository.
   ledger → cancel that instalment's reminders → receipt.
 - **Pay (cash) →** requires an open `cash_session`; same allocation path; **gapless** receipt
   number from a locked counter row (not a Postgres sequence — sequences gap on rollback).
-- **Remind →** nightly scheduler materialises intent; the sender every 15 min re-checks: paid?
-  opted out? quarantined? quiet hours? frequency cap? tenant daily cap? credits > 0? — **all
-  limits live in the sender, not the scheduler.**
+- **Remind →** nightly scheduler materialises intent against the EFFECTIVE due date
+  (`moratorium.deferred_due_on ?? instalment.due_on`); the sender every 15 min re-checks: paid?
+  under moratoire? opted out? quarantined? quiet hours? frequency cap? tenant daily cap?
+  credits > 0? — **all limits live in the sender, not the scheduler.** The message row, the
+  credit debit and the schedule's flip to `sent` commit together; the provider is called after.
+- **Moratoire →** the J-14 reminder carries a tokenised chat link; the parent picks up to
+  **21 days from the ORIGINAL due date**, once per instalment. Auto-granted or queued for a
+  bursar — **the school configures which**, in `tenant.settings.moratorium`. A grant suppresses
+  the due-date ladder and schedules two `moratorium_end` reminders (J-7 and the eve).
 
 ## Security
 argon2id · JWT 15 min + rotating refresh with reuse detection · TOTP 2FA for Director & Bursar ·

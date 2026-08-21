@@ -1,9 +1,17 @@
 import 'reflect-metadata'
 import { loadDotEnvIfPresent, loadEnv } from '@fineduc/config'
-import { ManualPaymentProvider, FakePaymentProvider, type PaymentProvider } from '@fineduc/providers'
+import {
+  ConsoleMessagingProvider,
+  FakePaymentProvider,
+  ManualPaymentProvider,
+  type MessagingProvider,
+  type PaymentProvider,
+} from '@fineduc/providers'
 import { consoleLogger } from '@fineduc/services'
 import { createRedis } from './queues/index.js'
 import { createWebhookProcessor } from './jobs/webhook-processor.js'
+import { createReminderScheduler } from './jobs/reminder-scheduler.js'
+import { createMessageSender } from './jobs/message-sender.js'
 
 /**
  * The worker process (ARCHITECTURE.md §3, §11).
@@ -12,10 +20,9 @@ import { createWebhookProcessor } from './jobs/webhook-processor.js'
  * application services through `@fineduc/services` rather than importing the
  * API — apps may never import each other — and runs no web framework.
  *
- * Only `webhook-processor` is wired today; the other queues in §11 land with
- * their phases. Starting the process with one live worker is deliberate: an
- * empty queue is honest, whereas a stubbed job that silently succeeds looks
- * like the work is done.
+ * `webhook-processor`, `reminder-scheduler` and `message-sender` are wired.
+ * The other queues in §11 land with their phases: an empty queue is honest,
+ * whereas a stubbed job that silently succeeds looks like the work is done.
  */
 loadDotEnvIfPresent('.env')
 const env = loadEnv()
@@ -35,6 +42,23 @@ function buildProviderRegistry(): Map<string, PaymentProvider> {
   return registry
 }
 
+/**
+ * Console only, for both rails.
+ *
+ * There is no WhatsApp adapter and no SMS adapter yet — both need a
+ * third-party account this project does not have, and AGENTS.md forbids
+ * adding one without asking. Console logs a REDACTED number instead of
+ * sending, which is also what stops a dev or test environment from
+ * messaging a real family by accident.
+ *
+ * When the real adapters land they are registered here, per channel, and
+ * nothing above this function changes.
+ */
+function buildMessagingRegistry(): (channel: 'whatsapp' | 'sms') => MessagingProvider {
+  const consoleProvider = new ConsoleMessagingProvider()
+  return () => consoleProvider
+}
+
 async function main(): Promise<void> {
   const connection = createRedis()
   const providers = buildProviderRegistry()
@@ -50,18 +74,31 @@ async function main(): Promise<void> {
     },
   })
 
-  webhookProcessor.on('failed', (job, error) => {
-    logger.error(`webhook-processor job ${job?.id ?? '?'} failed: ${error.message}`)
-  })
+  const reminderScheduler = createReminderScheduler({ connection })
+  const messageSender = createMessageSender({ connection, resolveProvider: buildMessagingRegistry() })
 
-  logger.log(`Fineduc worker started (${env.NODE_ENV}) — queues: webhook-processor`)
+  const workers = [
+    ['webhook-processor', webhookProcessor],
+    ['reminder-scheduler', reminderScheduler],
+    ['message-sender', messageSender],
+  ] as const
+
+  for (const [name, worker] of workers) {
+    worker.on('failed', (job, error) => {
+      logger.error(`${name} job ${job?.id ?? '?'} failed: ${error.message}`)
+    })
+  }
+
+  logger.log(
+    `Fineduc worker started (${env.NODE_ENV}) — queues: ${workers.map(([name]) => name).join(', ')}`,
+  )
 
   const shutdown = async (signal: string) => {
     logger.log(`${signal} received, draining…`)
     // close() waits for in-flight jobs. A money job killed mid-transaction
     // would roll back, but the job would be marked stalled and retried, and
     // draining avoids that churn entirely.
-    await webhookProcessor.close()
+    await Promise.all(workers.map(([, worker]) => worker.close()))
     await connection.quit()
     process.exit(0)
   }

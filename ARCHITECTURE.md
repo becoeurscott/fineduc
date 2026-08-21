@@ -476,27 +476,74 @@ POST /cash-sessions/:id/close { declaredMinor, note }
 
 ```
 Nightly (per tenant, at 02:00 tenant time) — reminder-scheduler
-  for each unpaid instalment in the horizon (due_on within −60 .. +90 days):
-    for each active reminder_rule:
-      for each guardian with pays_fees = true and not opted out and not quarantined:
-        upsert reminder_schedule(instalment, rule, guardian)
-          scheduled_for = due_on + offset_days, at the tenant's send hour, in TENANT TZ
-        (unique constraint makes the whole job safely re-runnable)
+  for each unpaid instalment in the horizon, by EFFECTIVE due date
+      (effective = moratorium.deferred_due_on when granted, else instalment.due_on):
+    a granted moratoire still running:
+        suppress every basis='due_date' rule (skip_reason = 'moratorium_granted')
+        materialise the basis='moratorium_end' rules against deferred_due_on
+    a PENDING request: change nothing — nothing has been promised yet
+    otherwise: the ordinary ladder
+    for each guardian with pays_fees = true:
+      upsert reminder_schedule(instalment, rule, guardian)
+        scheduled_for = anchor + offset_days, at the tenant's send hour, in TENANT TZ
+      (unique constraint makes the whole job safely re-runnable)
+
+  The scan filters on i.due_on WIDENED by the 21-day cap and re-filters on the
+  effective date: COALESCE is not sargable, and a single COALESCE predicate
+  gives up the (tenant_id, due_on, status) index and scans the whole table.
+
+  Never materialise a moratorium_end row whose anchor is not strictly AFTER the
+  day the moratoire was decided — for a one-week delay, deferred minus 7 days
+  IS the original due date, and it would otherwise fire the day it was granted.
+
+  A grant, refusal or cancellation re-runs the SAME function immediately. The
+  sender runs every 15 minutes; waiting for 02:00 would chase a family all
+  afternoon for a delay just agreed, and a refusal the day before a due date
+  would send them nothing at all.
 
 Every 15 min — message-sender picks up rows where scheduled_for <= now and status = scheduled
   AT SEND TIME, and only at send time, check:
     ✗ instalment already paid or waived      → skip (reason: settled)   ← the #1 trust bug
+    ✗ due-date rung while a moratoire runs   → skip (moratorium_active)
+    ✗ end-of-moratoire rung once it is over  → skip (moratorium_ended)
     ✗ guardian opted out / quarantined       → skip
     ✗ outside tenant quiet hours (default 07:00–20:00 tenant tz) → defer
     ✗ guardian already messaged N times today (default 2) → defer
     ✗ tenant daily message cap reached       → defer + warn the bursar
     ✗ message credit balance == 0            → skip + alert    (never send on credit)
-  then:
+  then, in ONE transaction:
     render the template (locale, variables, school signature)
-    mint a payment_link token
+    mint or reuse a moratorium_chat_link token when the template offers a delay
+    write the message row + debit message_credit_ledger + flip the schedule to sent
+  and only AFTER it commits:
     MessagingProvider.send() — WhatsApp first; on undeliverable, fall back to SMS
-    debit message_credit_ledger in the SAME transaction as the message row
     store provider_message_id for delivery callbacks
+    on failure: mark the message failed and REFUND the credit (a new row, not a reversal)
+
+  The boundary is the design. Crash between the debit and the flip and the next
+  tick re-sends and double-charges; call the provider first and a crash loses
+  the charge and the audit. The residual risk is deliberate: a crash between
+  COMMIT and the call means one missed reminder rather than two sent.
+```
+
+### 8.5b Le moratoire — a parent-requested delay
+
+```
+The J-14 reminder carries a link: https://<PUBLIC_PAY_URL>/moratoire/<token>
+  token = <tenantId>.<32 random bytes>, scoped to ONE instalment and ONE guardian
+
+GET  /moratoire/:token   -> school, student FIRST NAME only, amount owed, the offer
+POST /moratoire/:token/request { durationDays, reason?, idempotencyKey }
+  deferred_due_on = ORIGINAL due_on + N, N <= 21 — never measured from the request
+    date, so asking late buys less time, never more, and a moratoire cannot
+    become an indefinite snooze
+  once per instalment (partial unique index on status IN ('pending','granted'))
+  auto-granted or left pending for a bursar — THE SCHOOL CONFIGURES WHICH
+
+Per-school policy in tenant.settings.moratorium: enabled, approval (auto|manual),
+  allowedDurationsDays, offerFromDaysBeforeDue, lateGraceDays, refusalFreesSlot.
+  MAX_MORATORIUM_DAYS = 21 is a CONSTANT, not a setting: a school may offer less,
+  never more, not even by hand-editing the blob.
 ```
 **Hard limits enforced in the sender, not the scheduler** — a scheduler bug must not be able to
 bypass them.

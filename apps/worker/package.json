@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@fineduc/config": "workspace:*",
+    "@fineduc/contracts": "workspace:*",
     "@fineduc/db": "workspace:*",
     "@fineduc/domain": "workspace:*",
     "@fineduc/money": "workspace:*",

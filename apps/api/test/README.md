@@ -26,9 +26,18 @@ corrupt each other's fixtures.
 | Receipt numbers are gapless, even across a rollback | `cash-payment.e2e.test.ts` |
 | A cash variance cannot be closed without a written reason | `cash-payment.e2e.test.ts` |
 | DI resolves for real (the tsx/esbuild trap) | `health.e2e.test.ts` |
+| **No reminder for an instalment paid between scheduling and sending** | `apps/worker/test/reminder-flow.e2e.test.ts` |
+| **A log fixture contains no phone number** (nor a link token) | `apps/worker/test/reminder-flow.e2e.test.ts` |
+| A granted moratoire silences the ordinary reminder ladder | `apps/worker/test/reminder-flow.e2e.test.ts` |
+| A reminder cancelled by a PAYMENT is never revived by a sweep | `apps/worker/test/reminder-flow.e2e.test.ts` |
+| A new table is not silently DELETE-able by the app role | `packages/db/src/rls.integration.test.ts` |
+
+Some of these live under `apps/worker/test/`. They are listed here because
+this table is the index of the AGENTS.md guarantees, not of one app's suite —
+and the two that were owed since phase 7 were owed by the reminder path,
+which is a worker concern.
 
 ## Still owed
 
-- No reminder for an instalment paid between scheduling and sending
-  (phase 7).
-- A log fixture contains no phone number.
+Nothing from the AGENTS.md list. Anything added to that list belongs in the
+table above, with the file that proves it, in the same PR.

@@ -233,6 +233,9 @@ importers:
       '@fineduc/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@fineduc/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@fineduc/db':
         specifier: workspace:*
         version: link:../../packages/db

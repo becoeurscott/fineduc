@@ -97,6 +97,7 @@ describe('loadEnv — required core variables', () => {
 describe('loadEnv — production requires every provider credential', () => {
   const productionExtras = {
     APP_DATABASE_URL: 'postgresql://fineduc_app:secret@db.internal:5432/fineduc',
+    PUBLIC_PAY_URL: 'https://pay.fineduc.com',
     CINETPAY_API_KEY: 'k',
     CINETPAY_SITE_ID: 's',
     CINETPAY_WEBHOOK_SECRET: 'w',
@@ -136,5 +137,56 @@ describe('loadEnv — production requires every provider credential', () => {
       expect(message).toContain('WHATSAPP_ACCESS_TOKEN')
       expect(message).toContain('SENTRY_DSN')
     }
+  })
+})
+
+describe('PUBLIC_PAY_URL', () => {
+  const productionBase = {
+    APP_DATABASE_URL: 'postgresql://fineduc_app:secret@db.internal:5432/fineduc',
+    PUBLIC_PAY_URL: 'https://pay.fineduc.com',
+    CINETPAY_API_KEY: 'k',
+    CINETPAY_SITE_ID: 's',
+    CINETPAY_WEBHOOK_SECRET: 'w',
+    WHATSAPP_PHONE_NUMBER_ID: 'p',
+    WHATSAPP_ACCESS_TOKEN: 't',
+    WHATSAPP_WEBHOOK_SECRET: 'w',
+    SMS_API_KEY: 'k',
+    S3_ENDPOINT: 'e',
+    S3_BUCKET: 'b',
+    S3_ACCESS_KEY_ID: 'a',
+    S3_SECRET_ACCESS_KEY: 's',
+    SENTRY_DSN: 'd',
+  }
+
+  it('defaults to the local pay app in development', () => {
+    expect(loadEnv(validBase).PUBLIC_PAY_URL).toBe('http://localhost:3030')
+  })
+
+  it('rejects a relative or malformed URL — a link in a message must be absolute', () => {
+    expect(() => loadEnv({ ...validBase, PUBLIC_PAY_URL: '/moratoire' })).toThrow()
+    expect(() => loadEnv({ ...validBase, PUBLIC_PAY_URL: 'pay.fineduc.com' })).toThrow()
+  })
+
+  /**
+   * The check that a plain `=== ''` test would have missed. This variable has
+   * a localhost DEFAULT, so "is it set?" is always true — and shipping the
+   * default to production means every reminder carries a link to a machine
+   * nobody can reach, in a message already delivered and impossible to recall.
+   */
+  it('refuses to boot production while still pointing at localhost', () => {
+    for (const url of ['http://localhost:3030', 'http://127.0.0.1:3030']) {
+      try {
+        loadEnv({ ...validBase, NODE_ENV: 'production', ...productionBase, PUBLIC_PAY_URL: url })
+        throw new Error(`expected loadEnv to reject ${url}`)
+      } catch (error) {
+        expect((error as Error).message).toContain('PUBLIC_PAY_URL')
+      }
+    }
+  })
+
+  it('accepts a real public origin in production', () => {
+    expect(() =>
+      loadEnv({ ...validBase, NODE_ENV: 'production', ...productionBase, PUBLIC_PAY_URL: 'https://pay.fineduc.com' }),
+    ).not.toThrow()
   })
 })

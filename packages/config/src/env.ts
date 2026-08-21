@@ -72,6 +72,18 @@ const EnvSchema = z
         'ENCRYPTION_KEY must be exactly 64 hexadecimal characters (32 bytes) — generate with: openssl rand -hex 32',
       ),
 
+    /**
+     * Origin of the PUBLIC, parent-facing app (`apps/pay`). It is baked into
+     * the moratoire link that goes out in a reminder, so a wrong value here
+     * is not a broken page — it is a message already delivered to four
+     * hundred families with a dead link in it, and no way to take it back.
+     * Hence: no host guessing, no relative URL, and required in production.
+     */
+    PUBLIC_PAY_URL: z
+      .string()
+      .url('PUBLIC_PAY_URL must be an absolute URL, e.g. https://pay.fineduc.com')
+      .default('http://localhost:3030'),
+
     CINETPAY_API_KEY: z.string().default(''),
     CINETPAY_SITE_ID: z.string().default(''),
     CINETPAY_WEBHOOK_SECRET: z.string().default(''),
@@ -93,6 +105,21 @@ const EnvSchema = z
 
     // In production there is no Fake/Console adapter fallback — every
     // provider credential must actually be present.
+    /*
+     * PUBLIC_PAY_URL is checked separately, not in the list below: it has a
+     * localhost DEFAULT, so an `=== ''` test would pass happily in
+     * production and every reminder would ship a link to a machine nobody
+     * can reach.
+     */
+    if (/localhost|127\.0\.0\.1/.test(config.PUBLIC_PAY_URL)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['PUBLIC_PAY_URL'],
+        message:
+          'PUBLIC_PAY_URL still points at localhost. It is baked into links sent to parents, so it must be the real public origin in production.',
+      })
+    }
+
     const requiredInProduction = [
       'APP_DATABASE_URL',
       'CINETPAY_API_KEY',
