@@ -12,6 +12,8 @@ import {
 function sendable(over: Partial<SendContext> = {}): SendContext {
   return {
     instalment: { status: 'overdue', amountMinor: 100_000n, allocatedMinor: 0n },
+    reminder: { basis: 'due_date' },
+    moratoriumActive: false,
     guardian: { phoneE164: '+237600000001', optedOut: false, quarantined: false },
     localHour: 9,
     quietHours: DEFAULT_QUIET_HOURS,
@@ -212,5 +214,75 @@ describe('resolveChannel', () => {
     expect(
       resolveChannel({ preferredChannel: 'whatsapp', whatsappOptIn: true, whatsappUndeliverable: true }),
     ).toBe('sms')
+  })
+})
+
+describe('a moratoire the school granted', () => {
+  it('silences the ordinary ladder while the delay is running', () => {
+    const decision = decideEligibility(sendable({ moratoriumActive: true }))
+    expect(decision).toEqual({ action: 'skip', reason: 'moratorium_active' })
+  })
+
+  it('still sends the end-of-moratoire reminders while it is running', () => {
+    const decision = decideEligibility(
+      sendable({ moratoriumActive: true, reminder: { basis: 'moratorium_end' } }),
+    )
+    expect(decision).toEqual({ action: 'send' })
+  })
+
+  /**
+   * "Votre délai se termine dans une semaine" is nonsense once the delay is
+   * over — whether a director revoked it or it simply expired before a stuck
+   * sender got to the row.
+   */
+  it('drops an end-of-moratoire reminder once the delay is over', () => {
+    const decision = decideEligibility(
+      sendable({ moratoriumActive: false, reminder: { basis: 'moratorium_end' } }),
+    )
+    expect(decision).toEqual({ action: 'skip', reason: 'moratorium_ended' })
+  })
+
+  it('resumes the ordinary ladder once the delay is over', () => {
+    expect(decideEligibility(sendable({ moratoriumActive: false }))).toEqual({ action: 'send' })
+  })
+
+  /**
+   * Ordering, asserted rather than assumed. A family who PAID during their
+   * moratoire must be reported as settled — that is the reason a bursar
+   * needs to see on the row, and it is the check whose consequence is a lost
+   * school rather than a wasted credit.
+   */
+  it('reports settled ahead of the moratoire, when both are true', () => {
+    const decision = decideEligibility(
+      sendable({
+        instalment: { status: 'paid', amountMinor: 100_000n, allocatedMinor: 100_000n },
+        moratoriumActive: true,
+      }),
+    )
+    expect(decision).toEqual({ action: 'skip', reason: 'settled' })
+  })
+
+  /**
+   * And ahead of everything cheaper. A moratoire is a permanent skip for
+   * this row, so deferring it to a quieter hour would leave something that
+   * retries every fifteen minutes until the delay expires.
+   */
+  it('reports the moratoire ahead of any deferrable reason', () => {
+    const decision = decideEligibility(
+      sendable({
+        moratoriumActive: true,
+        localHour: 3,
+        messagesToGuardianToday: 9,
+        messagesForTenantToday: 9_999,
+      }),
+    )
+    expect(decision).toEqual({ action: 'skip', reason: 'moratorium_active' })
+  })
+
+  it('reports the moratoire ahead of an opt-out, which is the weaker signal', () => {
+    const decision = decideEligibility(
+      sendable({ moratoriumActive: true, guardian: { phoneE164: '+237600000001', optedOut: true, quarantined: false } }),
+    )
+    expect(decision).toEqual({ action: 'skip', reason: 'moratorium_active' })
   })
 })

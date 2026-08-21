@@ -17,6 +17,8 @@ import type { InstalmentStatus } from '../billing/instalments.js'
 
 export type SkipReason =
   | 'settled'
+  | 'moratorium_active'
+  | 'moratorium_ended'
   | 'opted_out'
   | 'quarantined'
   | 'no_credits'
@@ -36,6 +38,19 @@ export interface SendContext {
     readonly amountMinor: bigint
     readonly allocatedMinor: bigint
   }
+  /**
+   * What this reminder's offset is measured FROM. `due_date` is the ordinary
+   * ladder; `moratorium_end` is the pair of reminders that hang off a granted
+   * moratoire's new date.
+   */
+  readonly reminder: { readonly basis: 'due_date' | 'moratorium_end' }
+  /**
+   * Whether a granted moratoire is still running TODAY, computed by
+   * `isMoratoriumActive` against the live row. Required rather than optional
+   * on purpose: a caller that has not thought about the moratoire must not
+   * be able to default its way into chasing a family the school gave time to.
+   */
+  readonly moratoriumActive: boolean
   readonly guardian: {
     readonly phoneE164: string | null
     readonly optedOut: boolean
@@ -105,6 +120,30 @@ export function decideEligibility(context: SendContext): EligibilityDecision {
   if (isInstalmentSettled(context.instalment)) {
     return { action: 'skip', reason: 'settled' }
   }
+
+  /*
+   * The same class of trust bug as `settled`, which is why these sit
+   * immediately after it and ahead of everything else: chasing a family for
+   * a date the SCHOOL ITSELF moved is only marginally better than chasing
+   * one who has already paid, and it is just as unforgivable to the parent.
+   *
+   * The scheduler also suppresses the due-date ladder while a moratoire is
+   * running. This is the belt to that brace — the scheduler decides hours or
+   * days ahead, a moratoire can be granted in between, and rule #7 says the
+   * sender is where a limit is actually enforced.
+   */
+  if (context.reminder.basis === 'due_date' && context.moratoriumActive) {
+    return { action: 'skip', reason: 'moratorium_active' }
+  }
+  /*
+   * The mirror: a "your delay ends in a week" reminder is nonsense once the
+   * delay is over. Covers both a director revoking a moratoire and one that
+   * simply expired before a stuck sender got to it.
+   */
+  if (context.reminder.basis === 'moratorium_end' && !context.moratoriumActive) {
+    return { action: 'skip', reason: 'moratorium_ended' }
+  }
+
   if (context.guardian.optedOut) {
     return { action: 'skip', reason: 'opted_out' }
   }
