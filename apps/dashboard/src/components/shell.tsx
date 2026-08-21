@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import clsx from 'clsx'
 import { can, type Capability } from '@fineduc/contracts'
 import { useApp } from '@/lib/app-context'
+import { useAuth } from '@/lib/auth'
 import { ROLE_LABEL, type TranslationKey } from '@/lib/i18n'
 
 interface NavItem {
@@ -34,6 +35,7 @@ const NAV: NavItem[] = [
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const { t, user, locale, setLocale } = useApp()
+  const { logout } = useAuth()
   const pathname = usePathname()
   const role = user?.role ?? 'director'
   const items = NAV.filter((item) => can(role, item.capability))
@@ -54,20 +56,30 @@ export function Shell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
 
-          <div className="flex shrink-0 items-center gap-1 rounded-full border border-line p-0.5">
-            {(['fr', 'en'] as const).map((code) => (
-              <button
-                key={code}
-                onClick={() => setLocale(code)}
-                aria-pressed={locale === code}
-                className={clsx(
-                  'rounded-full px-2.5 py-1 text-xs font-medium transition-colors',
-                  locale === code ? 'bg-ink text-white' : 'text-slate hover:text-ink',
-                )}
-              >
-                {code.toUpperCase()}
-              </button>
-            ))}
+          <div className="flex shrink-0 items-center gap-2">
+            <div className="flex items-center gap-1 rounded-full border border-line p-0.5">
+              {(['fr', 'en'] as const).map((code) => (
+                <button
+                  key={code}
+                  onClick={() => setLocale(code)}
+                  aria-pressed={locale === code}
+                  className={clsx(
+                    'rounded-full px-2.5 py-1 text-xs font-medium transition-colors',
+                    locale === code ? 'bg-ink text-white' : 'text-slate hover:text-ink',
+                  )}
+                >
+                  {code.toUpperCase()}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={logout}
+              className="rounded-full px-3 py-1.5 text-xs font-medium text-slate transition-colors hover:bg-surface hover:text-ink"
+              title={locale === 'fr' ? 'Déconnexion' : 'Sign out'}
+            >
+              {locale === 'fr' ? 'Déconnexion' : 'Sign out'}
+            </button>
           </div>
         </div>
       </header>

@@ -59,10 +59,10 @@ const LAST_NAMES = [
 ]
 
 export const CLASS_GROUPS: ClassGroup[] = [
-  { id: 'cg-6a', name: '6ème A', gradeLevelName: '6ème', studentCount: 34 },
-  { id: 'cg-6b', name: '6ème B', gradeLevelName: '6ème', studentCount: 31 },
-  { id: 'cg-5a', name: '5ème A', gradeLevelName: '5ème', studentCount: 29 },
-  { id: 'cg-4a', name: '4ème A', gradeLevelName: '4ème', studentCount: 27 },
+  { id: 'cg-6a', tenantId: 't-1', gradeLevelId: 'gl-6', academicYearId: 'ay-1', siteId: 's-1', name: '6ème A', gradeLevelName: '6ème', studentCount: 34 },
+  { id: 'cg-6b', tenantId: 't-1', gradeLevelId: 'gl-6', academicYearId: 'ay-1', siteId: 's-1', name: '6ème B', gradeLevelName: '6ème', studentCount: 31 },
+  { id: 'cg-5a', tenantId: 't-1', gradeLevelId: 'gl-5', academicYearId: 'ay-1', siteId: 's-1', name: '5ème A', gradeLevelName: '5ème', studentCount: 29 },
+  { id: 'cg-4a', tenantId: 't-1', gradeLevelId: 'gl-4', academicYearId: 'ay-1', siteId: 's-1', name: '4ème A', gradeLevelName: '4ème', studentCount: 27 },
 ]
 
 const FEE_TOTAL = 180_000
@@ -79,7 +79,7 @@ export const STUDENTS: MockStudent[] = (() => {
   let index = 0
 
   for (const group of CLASS_GROUPS) {
-    for (let i = 0; i < group.studentCount; i += 1) {
+    for (let i = 0; i < (group.studentCount ?? 0); i += 1) {
       const first = FIRST_NAMES[index % FIRST_NAMES.length] as string
       const last = LAST_NAMES[(index * 7) % LAST_NAMES.length] as string
       const roll = rand()
@@ -400,8 +400,8 @@ export const CASH_SESSION: CashSession = {
 
 export const FEE_SCHEDULES: FeeSchedule[] = CLASS_GROUPS.slice(0, 2).map((group, i) => ({
   id: `fs-${i + 1}`,
-  name: `Grille ${group.gradeLevelName} 2026-2027`,
-  gradeLevelName: group.gradeLevelName,
+  name: `Grille ${group.gradeLevelName ?? group.name} 2026-2027`,
+  gradeLevelName: group.gradeLevelName ?? group.name,
   academicYearName: '2026-2027',
   version: 1,
   status: 'published',
@@ -422,7 +422,7 @@ export const FEE_SCHEDULES: FeeSchedule[] = CLASS_GROUPS.slice(0, 2).map((group,
       { id: `it-${i}-3`, sequence: 3, label: '3ème tranche', dueOn: '2027-03-15', amount: money(60_000) },
     ],
   },
-  enrolmentCount: group.studentCount,
+  enrolmentCount: group.studentCount ?? 0,
 }))
 
 export const REMINDER_RULES: ReminderRule[] = [
@@ -512,8 +512,8 @@ export const STAFF: StaffUser[] = [
 ]
 
 export const ACADEMIC_YEARS: AcademicYear[] = [
-  { id: 'ay-2627', name: '2026-2027', startsOn: '2026-09-01', endsOn: '2027-06-30', status: 'active', studentCount: STUDENTS.length },
-  { id: 'ay-2526', name: '2025-2026', startsOn: '2025-09-01', endsOn: '2026-06-30', status: 'closed', studentCount: 114 },
+  { id: 'ay-2627', tenantId: 't-1', name: '2026-2027', startsOn: '2026-09-01', endsOn: '2027-06-30', status: 'active', studentCount: STUDENTS.length, createdAt: '2026-06-01T00:00:00.000Z', updatedAt: '2026-06-01T00:00:00.000Z' },
+  { id: 'ay-2526', tenantId: 't-1', name: '2025-2026', startsOn: '2025-09-01', endsOn: '2026-06-30', status: 'closed', studentCount: 114, createdAt: '2025-06-01T00:00:00.000Z', updatedAt: '2025-06-01T00:00:00.000Z' },
 ]
 
 export const SETTINGS: TenantSettings = {

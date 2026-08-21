@@ -11,6 +11,7 @@ export const AcademicYearSchema = z.object({
   startsOn: CalendarDateSchema,
   endsOn: CalendarDateSchema,
   status: AcademicYearStatusSchema,
+  studentCount: z.number().int().nonnegative().optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
 })
@@ -84,6 +85,7 @@ export const ClassGroupSchema = z.object({
   name: z.string(),
   capacity: z.number().int().positive().nullable().optional(),
   headTeacherName: z.string().nullable().optional(),
+  studentCount: z.number().int().nonnegative().optional(),
 })
 export type ClassGroup = z.infer<typeof ClassGroupSchema>
 

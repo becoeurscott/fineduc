@@ -103,7 +103,7 @@ export default function AdminPage() {
                     {years.data.map((year) => (
                       <Tr key={year.id}>
                         <Td className="font-medium">{year.name}</Td>
-                        <Td className="text-slate">{year.studentCount} élèves</Td>
+                        <Td className="text-slate">{year.studentCount ?? 0} élèves</Td>
                         <Td align="right">
                           <Badge tone={year.status === 'active' ? 'positive' : 'neutral'}>
                             {year.status === 'active' ? 'Active' : 'Clôturée'}
