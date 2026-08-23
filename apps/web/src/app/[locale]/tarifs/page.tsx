@@ -30,7 +30,7 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
           <SectionHeading eyebrow={t.pricing.eyebrow} title={t.pricing.title} subtitle={t.pricing.subtitle} />
         </Reveal>
         <Reveal delay={80}>
-          <PricingTable pricing={t.pricing} ctaHref={`/${locale}/demo`} />
+          <PricingTable pricing={t.pricing} ctaHref={`/${locale}/inscription`} />
         </Reveal>
       </Section>
 

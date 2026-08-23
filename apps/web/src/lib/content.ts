@@ -27,8 +27,8 @@ export const CONTENT = {
       features: 'Fonctionnalités',
       pricing: 'Tarifs',
       security: 'Sécurité',
-      demo: 'Demander une démo',
-      demoShort: 'Démo',
+      demo: 'Créer mon école',
+      demoShort: 'Inscription',
       login: 'Se connecter',
       menuOpen: 'Ouvrir le menu',
       menuClose: 'Fermer le menu',
@@ -46,7 +46,7 @@ export const CONTENT = {
          375px; French runs longer than English, so the primary label has
          to lose its adverb to keep that row intact. */
       ctaPrimaryShort: 'Commencer',
-      ctaSecondary: 'Voir la démo',
+      ctaSecondary: 'Voir la vidéo',
       trust: [
         'Aucun fonds ne transite par Fineduc',
         'Mobile money via agrégateur agréé',
@@ -261,7 +261,7 @@ export const CONTENT = {
       monthly: 'Mensuel',
       annual: 'Annuel (−20 %)',
       perMonth: '/ mois',
-      cta: 'Demander une démo',
+      cta: 'Commencer',
       mostPopular: 'Le plus choisi',
       plans: [
         {
@@ -353,10 +353,10 @@ export const CONTENT = {
       ],
     },
     finalCta: {
-      title: 'Voyons ce que votre école peut récupérer.',
+      title: 'Prêt à récupérer ce que votre école perd chaque année ?',
       subtitle:
-        'Une démonstration de 30 minutes, sur vos propres chiffres. Nous vous montrons ce que donnerait votre prochain trimestre.',
-      cta: 'Demander une démo',
+        'Créez votre compte en 2 minutes. Importez vos élèves, configurez vos tranches, et envoyez votre premier rappel — gratuitement pendant 30 jours.',
+      cta: 'Créer mon école',
       whatsapp: 'Écrire sur WhatsApp',
     },
     footer: {
@@ -389,8 +389,8 @@ export const CONTENT = {
       features: 'Features',
       pricing: 'Pricing',
       security: 'Security',
-      demo: 'Request a demo',
-      demoShort: 'Demo',
+      demo: 'Create my school',
+      demoShort: 'Sign up',
       login: 'Sign in',
       menuOpen: 'Open menu',
       menuClose: 'Close menu',
@@ -402,7 +402,7 @@ export const CONTENT = {
         'Stop chasing school fees. One file per student, clear instalments, automatic WhatsApp and SMS reminders, mobile money payment — and a director who sees everything, in real time.',
       ctaPrimary: 'Get started now',
       ctaPrimaryShort: 'Get started',
-      ctaSecondary: 'View demo',
+      ctaSecondary: 'Watch video',
       trust: ['No funds ever pass through Fineduc', 'Mobile money via a licensed aggregator', 'Your data belongs to you'],
     },
     trusted: {
@@ -530,7 +530,7 @@ export const CONTENT = {
       monthly: 'Monthly',
       annual: 'Annual (−20%)',
       perMonth: '/ month',
-      cta: 'Request a demo',
+      cta: 'Get started',
       mostPopular: 'Most chosen',
       plans: [
         {
@@ -622,9 +622,9 @@ export const CONTENT = {
       ],
     },
     finalCta: {
-      title: 'Let’s see what your school can recover.',
-      subtitle: 'A 30-minute demonstration, on your own figures. We show you what your next term would look like.',
-      cta: 'Request a demo',
+      title: 'Ready to recover what your school loses every year?',
+      subtitle: 'Create your account in 2 minutes. Import your students, set up your instalments, and send your first reminder — free for 30 days.',
+      cta: 'Create my school',
       whatsapp: 'Message us on WhatsApp',
     },
     footer: {

@@ -40,7 +40,7 @@ export default async function SecurityPage({ params }: { params: Promise<{ local
             <h2 className="mkt-h2 text-balance text-white">{t.finalCta.title}</h2>
             <p className="mt-5 text-[17px] leading-[1.6] text-white/65">{t.finalCta.subtitle}</p>
             <div className="mt-8">
-              <CTA href={`/${locale}/demo`} onInk>
+              <CTA href={`/${locale}/inscription`} onInk>
                 {t.finalCta.cta}
               </CTA>
             </div>

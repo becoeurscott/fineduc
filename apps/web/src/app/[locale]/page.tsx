@@ -52,7 +52,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
             </p>
 
             <div className="mt-7 flex items-center justify-center gap-2.5 sm:mt-9 sm:gap-3">
-              <PrimaryButton href={`/${locale}/demo`}>
+              <PrimaryButton href={`/${locale}/inscription`}>
                 <span className="sm:hidden">{t.hero.ctaPrimaryShort}</span>
                 <span className="hidden sm:inline">{t.hero.ctaPrimary}</span>
               </PrimaryButton>
@@ -251,7 +251,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
             title={t.proof.title}
             emptyBody={t.proof.empty}
             emptyCta={t.proof.cta}
-            ctaHref={`/${locale}/demo`}
+            ctaHref={`/${locale}/inscription`}
           />
         </Reveal>
       </LandscapeSection>
@@ -262,7 +262,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           <SectionHeading eyebrow={t.pricing.eyebrow} title={t.pricing.title} subtitle={t.pricing.subtitle} />
         </Reveal>
         <Reveal delay={80}>
-          <PricingTable pricing={t.pricing} ctaHref={`/${locale}/demo`} />
+          <PricingTable pricing={t.pricing} ctaHref={`/${locale}/inscription`} />
         </Reveal>
       </Section>
 
@@ -287,7 +287,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
             <h2 className="mkt-h2 text-balance">{t.finalCta.title}</h2>
             <p className="mt-5 text-[17px] leading-[1.6] text-pretty text-ink/75">{t.finalCta.subtitle}</p>
             <div className="mt-8 flex flex-wrap justify-center gap-3">
-              <CTA href={`/${locale}/demo`}>{t.finalCta.cta}</CTA>
+              <CTA href={`/${locale}/inscription`}>{t.finalCta.cta}</CTA>
             </div>
           </div>
         </Reveal>

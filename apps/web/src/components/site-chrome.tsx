@@ -212,7 +212,7 @@ export function SiteHeader({ locale }: { locale: Locale }) {
             {t.nav.login}
           </Link>
           <Link
-            href={`/${locale}/demo`}
+            href={`/${locale}/inscription`}
             className="hidden h-8 items-center rounded-[var(--radius-mkt-pill)] bg-black px-4 text-sm font-medium whitespace-nowrap text-white transition-colors hover:bg-[#323232] md:inline-flex"
           >
             {t.nav.demo}
