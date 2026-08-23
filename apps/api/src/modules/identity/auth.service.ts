@@ -244,7 +244,7 @@ export class AuthService {
   // Private helpers
   // ---------------------------------------------------------------------------
 
-  private async issueTokens(
+  async issueTokens(
     userId: string,
     email: string,
     tenantId: string,
