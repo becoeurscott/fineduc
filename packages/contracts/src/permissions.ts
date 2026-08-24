@@ -30,6 +30,7 @@ export const CAPABILITIES = [
   'users.manage',
   'data.export',
   'audit.view',
+  'platform.manage',
 ] as const
 
 export type Capability = (typeof CAPABILITIES)[number]
@@ -56,6 +57,7 @@ const MATRIX: Record<Role, Partial<Record<Capability, Grant>>> = {
     'users.manage': true,
     'data.export': true,
     'audit.view': true,
+    'platform.manage': true,
   },
   bursar: {
     'dashboard.view': true,

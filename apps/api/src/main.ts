@@ -63,6 +63,7 @@ async function bootstrap() {
   app.use('/auth/select-tenant', authLimiter)
   app.use('/auth/2fa', authLimiter)
   app.use('/auth/signup', authLimiter)
+  app.use('/auth/setup', authLimiter)
 
   /*
    * The PUBLIC parent-facing pages. Until now `/pay/:token` had no limit at

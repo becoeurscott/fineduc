@@ -46,3 +46,64 @@ export const ResendCodeRequestSchema = z.object({
   phone: z.string().min(8).max(20).optional(),
 })
 export type ResendCodeRequest = z.infer<typeof ResendCodeRequestSchema>
+
+export const SignupRequestStatusSchema = z.enum(['pending', 'approved', 'rejected', 'setup_complete', 'expired'])
+export type SignupRequestStatus = z.infer<typeof SignupRequestStatusSchema>
+
+export const SignupRequestListItemSchema = z.object({
+  id: z.string(),
+  schoolName: z.string(),
+  contactName: z.string(),
+  role: z.string(),
+  email: z.string(),
+  phone: z.string(),
+  studentCount: z.number().nullable(),
+  country: z.string(),
+  status: SignupRequestStatusSchema,
+  emailVerified: z.boolean(),
+  phoneVerified: z.boolean(),
+  setupToken: z.string().nullable(),
+  setupUrl: z.string().nullable(),
+  tempIdentifier: z.string().nullable(),
+  createdAt: z.string(),
+  completedAt: z.string().nullable(),
+  expiresAt: z.string(),
+})
+export type SignupRequestListItem = z.infer<typeof SignupRequestListItemSchema>
+
+export const ApproveSignupResponseSchema = z.object({
+  setupToken: z.string(),
+  setupUrl: z.string(),
+  tempIdentifier: z.string(),
+})
+export type ApproveSignupResponse = z.infer<typeof ApproveSignupResponseSchema>
+
+export const SetupAccountRequestSchema = z.object({
+  token: z.string(),
+  email: z.string().email().max(254),
+  phone: z.string().min(8).max(20),
+  password: z.string().min(8).max(128),
+})
+export type SetupAccountRequest = z.infer<typeof SetupAccountRequestSchema>
+
+export const SetupVerifyRequestSchema = z.object({
+  token: z.string(),
+  channel: z.enum(['email', 'phone']),
+  code: z.string().length(6),
+})
+export type SetupVerifyRequest = z.infer<typeof SetupVerifyRequestSchema>
+
+export const SetupResendRequestSchema = z.object({
+  token: z.string(),
+  channel: z.enum(['email', 'phone']),
+})
+export type SetupResendRequest = z.infer<typeof SetupResendRequestSchema>
+
+export const SetupInfoSchema = z.object({
+  schoolName: z.string(),
+  contactName: z.string(),
+  tempIdentifier: z.string(),
+  email: z.string(),
+  phone: z.string(),
+})
+export type SetupInfo = z.infer<typeof SetupInfoSchema>

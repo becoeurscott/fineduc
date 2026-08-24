@@ -50,6 +50,20 @@
         "3030"
       ],
       "port": 3030
+    },
+    {
+      "name": "admin",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@fineduc/admin",
+        "exec",
+        "next",
+        "dev",
+        "--port",
+        "3040"
+      ],
+      "port": 3040
     }
   ]
 }
