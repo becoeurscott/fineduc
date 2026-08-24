@@ -15,7 +15,7 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 const TOKEN_KEY = 'fineduc_admin_access_token'
 const REFRESH_KEY = 'fineduc_admin_refresh_token'
 
-const PUBLIC_PATHS = ['/login', '/setup']
+const PUBLIC_PATHS = ['/login']
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null)

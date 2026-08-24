@@ -5,6 +5,6 @@ import { Shell } from './shell'
 
 export function ShellGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  if (pathname === '/login' || pathname.startsWith('/setup')) return <>{children}</>
+  if (pathname === '/login') return <>{children}</>
   return <Shell>{children}</Shell>
 }

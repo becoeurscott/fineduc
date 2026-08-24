@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { useAuth } from '@/lib/auth'
 
 type Step = 'loading' | 'credentials' | 'verify-email' | 'verify-phone' | 'success' | 'error'
 
@@ -11,7 +10,6 @@ const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3010'
 export default function SetupPage() {
   const { token } = useParams<{ token: string }>()
   const router = useRouter()
-  const { login } = useAuth()
 
   const [step, setStep] = useState<Step>('loading')
   const [schoolName, setSchoolName] = useState('')
@@ -111,7 +109,8 @@ export default function SetupPage() {
         setCode('')
         setStep('verify-phone')
       } else if (data.accessToken && data.refreshToken) {
-        login(data.accessToken, data.refreshToken)
+        localStorage.setItem('fineduc_access_token', data.accessToken)
+        localStorage.setItem('fineduc_refresh_token', data.refreshToken)
         setStep('success')
         setTimeout(() => router.replace('/'), 2000)
       }
@@ -223,7 +222,7 @@ export default function SetupPage() {
               {error && <p className="text-sm text-danger">{error}</p>}
 
               <button type="submit" disabled={sending} className={btnClass}>
-                {sending ? 'Envoi…' : 'Continuer'}
+                {sending ? 'Envoi...' : 'Continuer'}
               </button>
             </form>
           </>
@@ -250,7 +249,7 @@ export default function SetupPage() {
               onClick={() => void handleVerify('email')}
               className={btnClass}
             >
-              {sending ? 'Vérification…' : 'Vérifier'}
+              {sending ? 'Vérification...' : 'Vérifier'}
             </button>
             <button
               type="button"
@@ -283,7 +282,7 @@ export default function SetupPage() {
               onClick={() => void handleVerify('phone')}
               className={btnClass}
             >
-              {sending ? 'Vérification…' : 'Vérifier'}
+              {sending ? 'Vérification...' : 'Vérifier'}
             </button>
             <button
               type="button"
@@ -298,14 +297,13 @@ export default function SetupPage() {
         {step === 'success' && (
           <div className="rounded-lg border border-positive/30 bg-positive/5 p-6 text-center">
             <p className="text-lg font-semibold text-ink">Compte configuré !</p>
-            <p className="mt-2 text-sm text-slate">Redirection vers votre tableau de bord…</p>
+            <p className="mt-2 text-sm text-slate">Redirection vers votre tableau de bord...</p>
             <div className="mt-4 flex justify-center">
               <div className="size-5 animate-spin rounded-full border-2 border-ink border-t-transparent" />
             </div>
           </div>
         )}
 
-        {/* Step indicator */}
         {(step === 'credentials' || step === 'verify-email' || step === 'verify-phone') && (
           <div className="mt-6 flex items-center justify-center gap-2">
             {['credentials', 'verify-email', 'verify-phone'].map((s, i) => (
