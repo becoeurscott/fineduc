@@ -94,49 +94,40 @@ describe('loadEnv — required core variables', () => {
   })
 })
 
-describe('loadEnv — production requires every provider credential', () => {
+describe('loadEnv — production requires the credentials the code actually uses', () => {
   const productionExtras = {
     APP_DATABASE_URL: 'postgresql://fineduc_app:secret@db.internal:5432/fineduc',
     PUBLIC_PAY_URL: 'https://pay.fineduc.com',
-    CINETPAY_API_KEY: 'k',
-    CINETPAY_SITE_ID: 's',
-    CINETPAY_WEBHOOK_SECRET: 'w',
-    WHATSAPP_PHONE_NUMBER_ID: 'p',
-    WHATSAPP_ACCESS_TOKEN: 't',
-    WHATSAPP_WEBHOOK_SECRET: 'w',
-    SMS_API_KEY: 'k',
-    S3_ENDPOINT: 'e',
-    S3_BUCKET: 'b',
-    S3_ACCESS_KEY_ID: 'a',
-    S3_SECRET_ACCESS_KEY: 's',
-    SENTRY_DSN: 'd',
   }
 
-  it('accepts production when every credential is present', () => {
+  it('accepts production with only APP_DATABASE_URL and a real PUBLIC_PAY_URL', () => {
     expect(() => loadEnv({ ...validBase, NODE_ENV: 'production', ...productionExtras })).not.toThrow()
   })
 
-  it('rejects production when a credential is missing, naming it', () => {
+  it('rejects production when APP_DATABASE_URL is missing, naming it', () => {
     try {
-      loadEnv({ ...validBase, NODE_ENV: 'production', ...productionExtras, S3_BUCKET: '' })
+      loadEnv({ ...validBase, NODE_ENV: 'production', ...productionExtras, APP_DATABASE_URL: '' })
       expect.fail('expected loadEnv to throw')
     } catch (error) {
       expect(error).toBeInstanceOf(EnvValidationError)
-      expect((error as Error).message).toContain('S3_BUCKET is required when NODE_ENV=production')
+      expect((error as Error).message).toContain('APP_DATABASE_URL is required when NODE_ENV=production')
     }
   })
 
-  it('reports every missing production credential, not just one', () => {
-    try {
-      loadEnv({ ...validBase, NODE_ENV: 'production' })
-      expect.fail('expected loadEnv to throw')
-    } catch (error) {
-      const message = (error as Error).message
-      expect(message).toContain('APP_DATABASE_URL')
-      expect(message).toContain('CINETPAY_API_KEY')
-      expect(message).toContain('WHATSAPP_ACCESS_TOKEN')
-      expect(message).toContain('SENTRY_DSN')
-    }
+  /*
+   * The counterpart to the rule above: a credential whose adapter is not
+   * wired must NOT block the boot. If someone registers the CinetPay or
+   * WhatsApp adapter without moving its key back into requiredInProduction,
+   * this test keeps passing and is the wrong kind of green — the reminder
+   * lives in the comment on requiredInProduction in env.ts.
+   */
+  it('does not require provider credentials whose adapters are not wired yet', () => {
+    const env = loadEnv({ ...validBase, NODE_ENV: 'production', ...productionExtras })
+    expect(env.CINETPAY_API_KEY).toBe('')
+    expect(env.WHATSAPP_ACCESS_TOKEN).toBe('')
+    expect(env.SMS_API_KEY).toBe('')
+    expect(env.S3_BUCKET).toBe('')
+    expect(env.SENTRY_DSN).toBe('')
   })
 })
 

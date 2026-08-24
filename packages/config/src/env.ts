@@ -103,8 +103,6 @@ const EnvSchema = z
   .superRefine((config, ctx) => {
     if (config.NODE_ENV !== 'production') return
 
-    // In production there is no Fake/Console adapter fallback — every
-    // provider credential must actually be present.
     /*
      * PUBLIC_PAY_URL is checked separately, not in the list below: it has a
      * localhost DEFAULT, so an `=== ''` test would pass happily in
@@ -120,21 +118,25 @@ const EnvSchema = z
       })
     }
 
-    const requiredInProduction = [
-      'APP_DATABASE_URL',
-      'CINETPAY_API_KEY',
-      'CINETPAY_SITE_ID',
-      'CINETPAY_WEBHOOK_SECRET',
-      'WHATSAPP_PHONE_NUMBER_ID',
-      'WHATSAPP_ACCESS_TOKEN',
-      'WHATSAPP_WEBHOOK_SECRET',
-      'SMS_API_KEY',
-      'S3_ENDPOINT',
-      'S3_BUCKET',
-      'S3_ACCESS_KEY_ID',
-      'S3_SECRET_ACCESS_KEY',
-      'SENTRY_DSN',
-    ] as const
+    /*
+     * Only credentials the running code actually consumes belong here.
+     *
+     * APP_DATABASE_URL is the one unconditional entry: the API must never
+     * connect as the migrator/owner role, and leaving it empty silently
+     * falls back to the well-known dev password the RLS migration creates
+     * the role with — see packages/db/src/connection.ts.
+     *
+     * The provider credentials (CinetPay, WhatsApp, SMS, S3, Sentry) are
+     * deliberately NOT required yet, because nothing reads them at runtime:
+     * the CinetPay adapter is never registered (see the comment in
+     * apps/api/src/modules/payments/provider.registry.ts) and the rest are
+     * only surfaced by the `not_implemented` health endpoint. Demanding a
+     * secret for an integration that does not run buys no safety — it just
+     * blocks the boot. Each one moves back into this list on the same
+     * commit that wires its adapter up, and mobile money is per-school
+     * opt-in rather than a platform-wide requirement.
+     */
+    const requiredInProduction = ['APP_DATABASE_URL'] as const
 
     for (const key of requiredInProduction) {
       if (config[key] === '') {
