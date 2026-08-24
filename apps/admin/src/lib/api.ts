@@ -144,7 +144,7 @@ class MockAdminApi implements AdminApi {
     this.counter += 1
     const tempId = `FIN-2026-${String(this.counter).padStart(4, '0')}`
     const token = `tok-${id}-${Date.now().toString(36)}`
-    const dashboardUrl = process.env['NEXT_PUBLIC_DASHBOARD_URL'] ?? 'http://localhost:3020'
+    const dashboardUrl = process.env.NEXT_PUBLIC_DASHBOARD_URL ?? 'http://localhost:3020'
     const setupUrl = `${dashboardUrl}/setup/${token}`
 
     this.signups = this.signups.map((r) =>
