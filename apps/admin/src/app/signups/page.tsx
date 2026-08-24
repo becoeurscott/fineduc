@@ -147,7 +147,7 @@ export default function SignupsPage() {
             />
             <button
               type="button"
-              onClick={() => copyLink(req.setupUrl!, req.id)}
+              onClick={() => copyLink(req.setupUrl ?? '', req.id)}
               className="whitespace-nowrap rounded bg-accent px-2 py-1 text-[10px] font-medium text-white"
             >
               {copiedId === req.id ? t('signups.copied') : t('signups.copyLink')}
