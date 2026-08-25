@@ -233,6 +233,13 @@ export function SignupForm({ locale }: { locale: 'fr' | 'en' }) {
     }
   }
 
+  const spinner = (
+    <svg className="size-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+    </svg>
+  )
+
   const stepIndex = Math.min(step, 3)
   const stepLabels = c.steps
 
@@ -321,9 +328,10 @@ export function SignupForm({ locale }: { locale: 'fr' | 'en' }) {
           <button
             type="submit"
             disabled={loading || !form.school.trim() || !form.name.trim() || !form.email.trim() || !form.phone.trim()}
-            className="inline-flex h-12 w-full items-center justify-center rounded-full bg-black px-6 text-sm font-medium text-white transition-colors hover:bg-[#323232] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+            className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-black px-6 text-sm font-medium text-white transition-colors hover:bg-[#323232] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
           >
-            {loading ? '...' : c.next}
+            {loading && spinner}
+            {c.next}
           </button>
         </form>
       )}
@@ -361,9 +369,10 @@ export function SignupForm({ locale }: { locale: 'fr' | 'en' }) {
             <button
               type="submit"
               disabled={loading || emailCode.length !== 6}
-              className="inline-flex h-12 w-full max-w-xs items-center justify-center rounded-full bg-black px-6 text-sm font-medium text-white transition-colors hover:bg-[#323232] disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex h-12 w-full max-w-xs items-center justify-center gap-2 rounded-full bg-black px-6 text-sm font-medium text-white transition-colors hover:bg-[#323232] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {loading ? '...' : c.next}
+              {loading && spinner}
+              {c.next}
             </button>
             <button type="button" onClick={handleResendEmail} disabled={loading} className="text-xs text-slate hover:text-ink">
               {c.resend}
@@ -405,9 +414,10 @@ export function SignupForm({ locale }: { locale: 'fr' | 'en' }) {
             <button
               type="submit"
               disabled={loading || phoneCode.length !== 6}
-              className="inline-flex h-12 w-full max-w-xs items-center justify-center rounded-full bg-black px-6 text-sm font-medium text-white transition-colors hover:bg-[#323232] disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex h-12 w-full max-w-xs items-center justify-center gap-2 rounded-full bg-black px-6 text-sm font-medium text-white transition-colors hover:bg-[#323232] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {loading ? '...' : c.next}
+              {loading && spinner}
+              {c.next}
             </button>
             <button type="button" onClick={handleResendPhone} disabled={loading} className="text-xs text-slate hover:text-ink">
               {c.resend}
@@ -459,9 +469,10 @@ export function SignupForm({ locale }: { locale: 'fr' | 'en' }) {
             <button
               type="submit"
               disabled={loading || password.length < 8 || password !== passwordConfirm}
-              className="inline-flex h-12 w-full max-w-sm items-center justify-center rounded-full bg-black px-6 text-sm font-medium text-white transition-colors hover:bg-[#323232] disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex h-12 w-full max-w-sm items-center justify-center gap-2 rounded-full bg-black px-6 text-sm font-medium text-white transition-colors hover:bg-[#323232] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {loading ? '...' : c.submit}
+              {loading && spinner}
+              {c.submit}
             </button>
           </div>
         </form>
