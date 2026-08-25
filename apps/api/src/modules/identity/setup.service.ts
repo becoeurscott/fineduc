@@ -80,7 +80,7 @@ export class SetupService {
 
     this.logger.log(`Approved "${signup.schoolName}" as ${tempIdentifier}`)
 
-    return { tempIdentifier, tempEmail, tempCode, loginUrl: this.loginUrl() }
+    return { tempIdentifier, tempEmail, tempCode, loginUrl: this.loginUrl(signup.setupToken!) }
   }
 
   /**
@@ -110,13 +110,13 @@ export class SetupService {
       tempIdentifier: signup.tempIdentifier,
       tempEmail: signup.tempEmail,
       tempCode,
-      loginUrl: this.loginUrl(),
+      loginUrl: this.loginUrl(signup.setupToken!),
     }
   }
 
-  private loginUrl(): string {
+  private loginUrl(setupToken: string): string {
     const base = process.env['NEXT_PUBLIC_DASHBOARD_URL'] ?? 'https://fineduc-dashboard.vercel.app'
-    return `${base.replace(/\/$/, '')}/first-login`
+    return `${base.replace(/\/$/, '')}/first-login/${setupToken}`
   }
 
   async rejectSignup(signupId: string, reason: string): Promise<void> {
@@ -137,20 +137,20 @@ export class SetupService {
     this.logger.log(`Rejected signup "${signup.schoolName}" — reason: ${reason}`)
   }
 
-  async loginSchool(email: string, code: string): Promise<{
+  async loginSchool(setupToken: string, code: string): Promise<{
     accessToken: string
     refreshToken: string
     expiresIn: number
     needsOnboarding: boolean
   }> {
     const signup = await this.prisma.client.signupRequest.findUnique({
-      where: { tempEmail: email.toLowerCase().trim() },
+      where: { setupToken },
     })
     if (!signup || !signup.tempCodeHash) {
-      throw new SetupError('INVALID_CREDENTIALS', 'Invalid email or access code')
+      throw new SetupError('INVALID_CREDENTIALS', 'Ce lien est invalide ou a expiré')
     }
     if (signup.status !== 'approved' && signup.status !== 'setup_complete') {
-      throw new SetupError('INVALID_CREDENTIALS', 'Invalid email or access code')
+      throw new SetupError('INVALID_CREDENTIALS', 'Ce lien est invalide ou a expiré')
     }
 
     const codeValid = await argon2.verify(signup.tempCodeHash!, code)

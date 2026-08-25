@@ -159,12 +159,9 @@ export default function LoginPage() {
               Se connecter
             </button>
 
-            <a
-              href="/first-login"
-              className="mt-1 text-center text-xs text-slate underline hover:text-ink"
-            >
-              Premi&egrave;re connexion &eacute;cole ?
-            </a>
+            <p className="mt-1 text-center text-xs text-slate">
+              Premi&egrave;re connexion ? Utilisez le lien re&ccedil;u par WhatsApp.
+            </p>
           </form>
         )}
 
