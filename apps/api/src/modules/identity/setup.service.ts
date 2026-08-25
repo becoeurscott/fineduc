@@ -331,6 +331,114 @@ export class SetupService {
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Onboarding (Phase 4): replace temp email, verify phone
+  // ---------------------------------------------------------------------------
+
+  async getOnboardingStatus(userId: string) {
+    const user = await this.prisma.client.user.findUniqueOrThrow({ where: { id: userId } })
+    const emailReplaced = !user.email.endsWith('@fineduc.school')
+    const phoneVerified = emailReplaced && !!user.phone
+    return {
+      emailReplaced,
+      phoneVerified,
+      complete: emailReplaced && phoneVerified,
+      currentEmail: user.email,
+      currentPhone: user.phone,
+    }
+  }
+
+  async sendOnboardingEmailCode(userId: string, newEmail: string) {
+    const user = await this.prisma.client.user.findUniqueOrThrow({ where: { id: userId } })
+    if (!user.email.endsWith('@fineduc.school')) {
+      throw new SetupError('ALREADY_DONE', 'Email has already been replaced')
+    }
+
+    const existing = await this.prisma.client.user.findUnique({ where: { email: newEmail.toLowerCase().trim() } })
+    if (existing && existing.id !== userId) {
+      throw new SetupError('EMAIL_TAKEN', 'This email is already in use')
+    }
+
+    await this.sendCode(newEmail.toLowerCase().trim(), 'email')
+    this.logger.log(`Sent onboarding email code to ${newEmail} for user ${userId}`)
+  }
+
+  async verifyOnboardingEmail(userId: string, code: string) {
+    const user = await this.prisma.client.user.findUniqueOrThrow({ where: { id: userId } })
+    if (!user.email.endsWith('@fineduc.school')) {
+      throw new SetupError('ALREADY_DONE', 'Email has already been replaced')
+    }
+
+    const codeHash = await this.hashCode(code)
+    const record = await this.prisma.client.verificationCode.findFirst({
+      where: {
+        channel: 'email',
+        codeHash,
+        usedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+      orderBy: { createdAt: 'desc' },
+    })
+
+    if (!record) {
+      throw new SetupError('INVALID_CODE', 'Invalid or expired verification code')
+    }
+
+    await this.prisma.client.$transaction(async (tx) => {
+      await tx.verificationCode.update({
+        where: { id: record.id },
+        data: { usedAt: new Date() },
+      })
+      await tx.user.update({
+        where: { id: userId },
+        data: { email: record.target },
+      })
+    })
+
+    this.logger.log(`User ${userId} replaced temp email with ${record.target}`)
+    return { emailReplaced: true, newEmail: record.target }
+  }
+
+  async sendOnboardingPhoneCode(userId: string) {
+    const user = await this.prisma.client.user.findUniqueOrThrow({ where: { id: userId } })
+    if (!user.phone) {
+      throw new SetupError('NO_PHONE', 'No phone number on file')
+    }
+    await this.sendCode(user.phone, 'phone')
+    this.logger.log(`Sent onboarding phone code to ${user.phone} for user ${userId}`)
+  }
+
+  async verifyOnboardingPhone(userId: string, code: string) {
+    const user = await this.prisma.client.user.findUniqueOrThrow({ where: { id: userId } })
+    if (!user.phone) {
+      throw new SetupError('NO_PHONE', 'No phone number on file')
+    }
+
+    const codeHash = await this.hashCode(code)
+    const record = await this.prisma.client.verificationCode.findFirst({
+      where: {
+        target: user.phone,
+        channel: 'phone',
+        codeHash,
+        usedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+      orderBy: { createdAt: 'desc' },
+    })
+
+    if (!record) {
+      throw new SetupError('INVALID_CODE', 'Invalid or expired verification code')
+    }
+
+    await this.prisma.client.verificationCode.update({
+      where: { id: record.id },
+      data: { usedAt: new Date() },
+    })
+
+    this.logger.log(`User ${userId} verified phone ${user.phone}`)
+    return { phoneVerified: true }
+  }
+
   async verifySetupCode(token: string, channel: 'email' | 'phone', code: string) {
     const signup = await this.prisma.client.signupRequest.findUnique({
       where: { setupToken: token },

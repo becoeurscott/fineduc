@@ -58,9 +58,9 @@ export default function LoginPage() {
           return
         }
 
-        const data = (await res.json()) as { accessToken: string; refreshToken: string }
+        const data = (await res.json()) as { accessToken: string; refreshToken: string; needsOnboarding?: boolean }
         login(data.accessToken, data.refreshToken)
-        router.replace('/')
+        router.replace(data.needsOnboarding ? '/onboarding' : '/')
         return
       }
 
