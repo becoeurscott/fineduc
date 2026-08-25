@@ -206,12 +206,6 @@ export function SiteHeader({ locale }: { locale: Locale }) {
             32px tall: all a 52px pill with 10px padding leaves.
           */}
           <Link
-            href={process.env.NEXT_PUBLIC_DASHBOARD_URL ?? 'http://localhost:3020/login'}
-            className="hidden h-8 items-center rounded-[var(--radius-mkt-pill)] border border-[#dde5ed] px-4 text-sm font-medium whitespace-nowrap text-slate transition-colors hover:border-ink hover:text-ink md:inline-flex"
-          >
-            {t.nav.login}
-          </Link>
-          <Link
             href={`/${locale}/inscription`}
             className="hidden h-8 items-center rounded-[var(--radius-mkt-pill)] bg-black px-4 text-sm font-medium whitespace-nowrap text-white transition-colors hover:bg-[#323232] md:inline-flex"
           >

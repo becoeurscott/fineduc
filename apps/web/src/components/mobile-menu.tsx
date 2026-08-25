@@ -105,17 +105,10 @@ export function MobileMenu({ locale }: { locale: Locale }) {
             </Link>
           ))}
           <Link
-            href={process.env.NEXT_PUBLIC_DASHBOARD_URL ?? 'http://localhost:3020/login'}
-            onClick={() => setOpen(false)}
-            className="mt-1 border-t border-[#dde5ed] px-3 pt-4 pb-2 text-[15px] font-medium text-ink hover:text-accent"
-          >
-            {t.nav.login}
-          </Link>
-          <Link
             href={`/${other}`}
             hrefLang={other}
             onClick={() => setOpen(false)}
-            className="mkt-link px-3 pb-2 text-[15px] font-medium text-slate hover:text-ink"
+            className="mkt-link mt-1 border-t border-[#dde5ed] px-3 pt-4 pb-2 text-[15px] font-medium text-slate hover:text-ink"
           >
             {other.toUpperCase()}
           </Link>
