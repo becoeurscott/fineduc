@@ -37,7 +37,9 @@ export class SetupService {
       setupToken: r.setupToken,
       setupUrl: r.setupToken ? `${dashboardUrl}/setup/${r.setupToken}` : null,
       tempIdentifier: r.tempIdentifier,
+      tempEmail: r.tempEmail,
       createdAt: r.createdAt.toISOString(),
+      approvedAt: r.approvedAt?.toISOString() ?? null,
       completedAt: r.completedAt?.toISOString() ?? null,
       expiresAt: r.expiresAt.toISOString(),
     }))
@@ -50,24 +52,70 @@ export class SetupService {
     if (!signup) throw new SetupError('NOT_FOUND', 'Signup request not found')
     if (signup.status !== 'pending') throw new SetupError('INVALID_STATUS', 'Only pending requests can be approved')
 
-    const setupToken = this.generateToken()
-    const tempIdentifier = `FIN-${new Date().getFullYear()}-${String(Date.now() % 10000).padStart(4, '0')}`
+    const rows = await this.prisma.client.$queryRaw<
+      Array<{ nextval: bigint }>
+    >`SELECT nextval('signup_identifier_seq')`
+    const nextval = rows[0]?.nextval
+    if (nextval === undefined) {
+      throw new SetupError('SEQUENCE_FAILED', 'Could not allocate a school identifier')
+    }
 
-    const dashboardUrl = process.env['NEXT_PUBLIC_DASHBOARD_URL'] ?? 'https://fineduc-dashboard.vercel.app'
-    const setupUrl = `${dashboardUrl}/setup/${setupToken}`
+    const year = new Date().getFullYear()
+    const serial = String(nextval).padStart(4, '0')
+    const tempIdentifier = `FIN-${year}-${serial}`
+    const tempEmail = `fin-${year}-${serial}@fineduc.school`
+    const tempCode = this.generateAccessCode()
 
     await this.prisma.client.signupRequest.update({
       where: { id: signupId },
       data: {
         status: 'approved',
-        setupToken,
+        approvedAt: new Date(),
         tempIdentifier,
+        tempEmail,
+        tempCodeHash: await this.auth.hashPassword(tempCode),
       },
     })
 
-    this.logger.log(`Approved signup "${signup.schoolName}" — temp ID: ${tempIdentifier}`)
+    this.logger.log(`Approved "${signup.schoolName}" as ${tempIdentifier}`)
 
-    return { setupToken, setupUrl, tempIdentifier }
+    return { tempIdentifier, tempEmail, tempCode, loginUrl: this.loginUrl() }
+  }
+
+  /**
+   * Issues a fresh code for an already-approved school. This exists because
+   * the code is only ever stored hashed: if the admin loses it before it
+   * reaches the school, there is nothing to look up — the only honest move
+   * is to replace it. Any code already sent stops working.
+   */
+  async reissueCode(signupId: string): Promise<ApproveSignupResponse> {
+    const signup = await this.prisma.client.signupRequest.findUnique({
+      where: { id: signupId },
+    })
+    if (!signup) throw new SetupError('NOT_FOUND', 'Signup request not found')
+    if (signup.status !== 'approved' || !signup.tempIdentifier || !signup.tempEmail) {
+      throw new SetupError('INVALID_STATUS', 'Only an approved request has a code to reissue')
+    }
+
+    const tempCode = this.generateAccessCode()
+    await this.prisma.client.signupRequest.update({
+      where: { id: signupId },
+      data: { tempCodeHash: await this.auth.hashPassword(tempCode) },
+    })
+
+    this.logger.log(`Reissued access code for ${signup.tempIdentifier}`)
+
+    return {
+      tempIdentifier: signup.tempIdentifier,
+      tempEmail: signup.tempEmail,
+      tempCode,
+      loginUrl: this.loginUrl(),
+    }
+  }
+
+  private loginUrl(): string {
+    const base = process.env['NEXT_PUBLIC_DASHBOARD_URL'] ?? 'https://fineduc-dashboard.vercel.app'
+    return `${base.replace(/\/$/, '').replace(/\/login$/, '')}/login`
   }
 
   async rejectSignup(signupId: string, reason: string): Promise<void> {
@@ -262,10 +310,19 @@ export class SetupService {
     this.logger.warn(`[DEV] ${channel} verification code for ${target}: ${code}`)
   }
 
-  private generateToken(): string {
-    const array = new Uint8Array(32)
-    crypto.getRandomValues(array)
-    return Array.from(array).map((b) => b.toString(16).padStart(2, '0')).join('')
+  /**
+   * A code a human reads off WhatsApp and types into a phone. The alphabet
+   * omits O/0, I/1 and L — the pairs that turn a working credential into a
+   * support call — and the grouping keeps it transcribable.
+   */
+  private generateAccessCode(): string {
+    const alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
+    const bytes = new Uint8Array(12)
+    crypto.getRandomValues(bytes)
+    const chars = Array.from(bytes, (b) => alphabet[b % alphabet.length])
+    return [chars.slice(0, 4), chars.slice(4, 8), chars.slice(8, 12)]
+      .map((group) => group.join(''))
+      .join('-')
   }
 
   private generateCode(): string {

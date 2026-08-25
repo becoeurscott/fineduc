@@ -65,16 +65,25 @@ export const SignupRequestListItemSchema = z.object({
   setupToken: z.string().nullable(),
   setupUrl: z.string().nullable(),
   tempIdentifier: z.string().nullable(),
+  /** Login identifier issued at approval. The code is never listed. */
+  tempEmail: z.string().nullable(),
   createdAt: z.string(),
+  approvedAt: z.string().nullable(),
   completedAt: z.string().nullable(),
   expiresAt: z.string(),
 })
 export type SignupRequestListItem = z.infer<typeof SignupRequestListItemSchema>
 
+/**
+ * Returned once, at approval. `tempCode` is plaintext and is never stored or
+ * returned again — only its argon2 hash is kept, so a lost code is reissued
+ * rather than looked up.
+ */
 export const ApproveSignupResponseSchema = z.object({
-  setupToken: z.string(),
-  setupUrl: z.string(),
   tempIdentifier: z.string(),
+  tempEmail: z.string(),
+  tempCode: z.string(),
+  loginUrl: z.string(),
 })
 export type ApproveSignupResponse = z.infer<typeof ApproveSignupResponseSchema>
 

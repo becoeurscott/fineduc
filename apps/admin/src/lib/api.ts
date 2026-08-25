@@ -3,6 +3,7 @@ import type { SignupRequestListItem, ApproveSignupResponse } from '@fineduc/cont
 export interface AdminApi {
   listSignupRequests(): Promise<SignupRequestListItem[]>
   approveSignup(id: string): Promise<ApproveSignupResponse>
+  reissueCode(id: string): Promise<ApproveSignupResponse>
   rejectSignup(id: string, reason: string): Promise<void>
 }
 
@@ -43,6 +44,11 @@ class RealAdminApi implements AdminApi {
 
   async approveSignup(id: string): Promise<ApproveSignupResponse> {
     const res = await adminFetch(`/admin/signups/${id}/approve`, { method: 'POST' })
+    return res.json() as Promise<ApproveSignupResponse>
+  }
+
+  async reissueCode(id: string): Promise<ApproveSignupResponse> {
+    const res = await adminFetch(`/admin/signups/${id}/reissue-code`, { method: 'POST' })
     return res.json() as Promise<ApproveSignupResponse>
   }
 

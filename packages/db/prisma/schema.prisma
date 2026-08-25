@@ -519,7 +519,13 @@ model SignupRequest {
   country         String    @db.Char(2)
   status          String    @default("pending")
   setupToken      String?   @unique @map("setup_token")
-  tempIdentifier  String?   @map("temp_identifier")
+  tempIdentifier  String?   @unique @map("temp_identifier")
+  /// Login identifier issued at approval. Not a mailbox — the school never
+  /// receives mail here; it is swapped for a real address during onboarding.
+  tempEmail       String?   @unique @map("temp_email")
+  /// argon2 hash. The plaintext is shown to the admin once, then unrecoverable.
+  tempCodeHash    String?   @map("temp_code_hash")
+  approvedAt      DateTime? @map("approved_at") @db.Timestamptz(6)
   rejectionReason String?   @map("rejection_reason")
   emailVerified   Boolean   @default(false) @map("email_verified")
   phoneVerified   Boolean   @default(false) @map("phone_verified")

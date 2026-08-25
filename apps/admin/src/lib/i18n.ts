@@ -27,6 +27,17 @@ export const DICT = {
     'signups.copyLink': 'Copier le lien',
     'signups.copied': 'Copié !',
     'signups.actions': 'Actions',
+    'signups.credentials': 'Accès à envoyer',
+    'signups.credentialsOnce':
+      'Notez ce code maintenant : il n’est pas conservé en clair et ne pourra plus être affiché.',
+    'signups.tempEmail': 'E-mail temporaire',
+    'signups.tempCode': 'Code d’accès',
+    'signups.sendWhatsapp': 'Envoyer sur WhatsApp',
+    'signups.reissue': 'Régénérer le code',
+    'signups.reissueWarning':
+      'Régénérer invalide le code précédent. À faire seulement si l’école ne l’a jamais reçu.',
+    'signups.sent': 'Accès envoyés',
+    'signups.copyAll': 'Tout copier',
 
     'common.search': 'Rechercher',
     'common.loading': 'Chargement…',
@@ -62,6 +73,17 @@ export const DICT = {
     'signups.copyLink': 'Copy link',
     'signups.copied': 'Copied!',
     'signups.actions': 'Actions',
+    'signups.credentials': 'Access to send',
+    'signups.credentialsOnce':
+      'Write this code down now — it is not stored in readable form and cannot be shown again.',
+    'signups.tempEmail': 'Temporary email',
+    'signups.tempCode': 'Access code',
+    'signups.sendWhatsapp': 'Send on WhatsApp',
+    'signups.reissue': 'Reissue code',
+    'signups.reissueWarning':
+      'Reissuing invalidates the previous code. Only do this if the school never received it.',
+    'signups.sent': 'Access sent',
+    'signups.copyAll': 'Copy all',
 
     'common.search': 'Search',
     'common.loading': 'Loading…',

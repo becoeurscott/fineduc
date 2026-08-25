@@ -17,7 +17,32 @@ import {
 import { getApi, qk } from '@/lib/api'
 import { useApp } from '@/lib/app-context'
 import { PageHeader } from '@/components/shell'
-import type { SignupRequestListItem, SignupRequestStatus } from '@fineduc/contracts'
+import type {
+  SignupRequestListItem,
+  SignupRequestStatus,
+  ApproveSignupResponse,
+} from '@fineduc/contracts'
+
+/**
+ * The admin relays these by hand over WhatsApp, so the message is built here
+ * rather than left to them to retype — a mistyped code reads as a broken
+ * product to the school, and they cannot check it against anything.
+ */
+function whatsappUrl(phone: string, schoolName: string, creds: ApproveSignupResponse): string {
+  const message = [
+    `Bonjour, votre demande pour ${schoolName} est validée.`,
+    '',
+    `Identifiant école : ${creds.tempIdentifier}`,
+    `E-mail temporaire : ${creds.tempEmail}`,
+    `Code d'accès : ${creds.tempCode}`,
+    '',
+    `Connectez-vous ici : ${creds.loginUrl}`,
+    '',
+    'À la première connexion, vous remplacerez cet e-mail temporaire par celui de votre école.',
+  ].join('\n')
+
+  return `https://wa.me/${phone.replace(/[^\d]/g, '')}?text=${encodeURIComponent(message)}`
+}
 
 const STATUS_TONE: Record<SignupRequestStatus, 'neutral' | 'warning' | 'accent' | 'positive' | 'danger'> = {
   pending: 'warning',
@@ -39,6 +64,13 @@ export default function SignupsPage() {
   const [rejectingId, setRejectingId] = useState<string | null>(null)
   const [rejectReason, setRejectReason] = useState('')
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  /*
+   * Credentials live only in this component's state. The code is returned
+   * once by the API and stored hashed, so a refresh loses it for good —
+   * which is why the panel says so and offers a reissue instead of pretending
+   * it can be looked up again.
+   */
+  const [issued, setIssued] = useState<Record<string, ApproveSignupResponse>>({})
 
   function statusLabel(status: SignupRequestStatus): string {
     const map: Record<SignupRequestStatus, string> = {
@@ -54,11 +86,36 @@ export default function SignupsPage() {
   async function handleApprove(id: string) {
     setActing(id)
     try {
-      await getApi().approveSignup(id)
+      const creds = await getApi().approveSignup(id)
+      setIssued((prev) => ({ ...prev, [id]: creds }))
       await queryClient.invalidateQueries({ queryKey: qk.signupRequests })
     } finally {
       setActing(null)
     }
+  }
+
+  async function handleReissue(id: string) {
+    setActing(id)
+    try {
+      const creds = await getApi().reissueCode(id)
+      setIssued((prev) => ({ ...prev, [id]: creds }))
+    } finally {
+      setActing(null)
+    }
+  }
+
+  function copyCredentials(req: SignupRequestListItem, creds: ApproveSignupResponse) {
+    void navigator.clipboard.writeText(
+      [
+        `${req.schoolName}`,
+        `Identifiant : ${creds.tempIdentifier}`,
+        `E-mail temporaire : ${creds.tempEmail}`,
+        `Code d'accès : ${creds.tempCode}`,
+        `Connexion : ${creds.loginUrl}`,
+      ].join('\n'),
+    )
+    setCopiedId(req.id)
+    setTimeout(() => setCopiedId(null), 2000)
   }
 
   async function handleReject(id: string) {
@@ -72,12 +129,6 @@ export default function SignupsPage() {
     } finally {
       setActing(null)
     }
-  }
-
-  function copyLink(url: string, id: string) {
-    void navigator.clipboard.writeText(url)
-    setCopiedId(id)
-    setTimeout(() => setCopiedId(null), 2000)
   }
 
   function renderActions(req: SignupRequestListItem) {
@@ -134,23 +185,70 @@ export default function SignupsPage() {
       )
     }
 
-    if (req.status === 'approved' && req.setupUrl) {
-      return (
-        <div className="flex flex-col gap-1">
-          <span className="text-[10px] font-medium uppercase tracking-wider text-slate">{t('signups.tempId')}</span>
-          <span className="font-mono text-xs font-semibold text-ink">{req.tempIdentifier}</span>
-          <div className="mt-1 flex items-center gap-1.5">
-            <input
-              readOnly
-              value={req.setupUrl}
-              className="h-7 w-40 rounded border border-line bg-canvas px-1.5 font-mono text-[10px] text-slate"
-            />
+    if (req.status === 'approved') {
+      const creds = issued[req.id]
+
+      // The code is gone after a refresh — by design. Show what survives in
+      // the database and offer the only real remedy.
+      if (!creds) {
+        return (
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] font-medium uppercase tracking-wider text-slate">
+              {t('signups.tempId')}
+            </span>
+            <span className="font-mono text-xs font-semibold text-ink">{req.tempIdentifier}</span>
+            <span className="font-mono text-[10px] text-slate">{req.tempEmail}</span>
             <button
               type="button"
-              onClick={() => copyLink(req.setupUrl ?? '', req.id)}
-              className="whitespace-nowrap rounded bg-accent px-2 py-1 text-[10px] font-medium text-white"
+              disabled={acting === req.id}
+              onClick={() => void handleReissue(req.id)}
+              className="mt-1.5 w-fit rounded border border-line px-2 py-1 text-[10px] font-medium text-slate transition-colors hover:border-ink hover:text-ink disabled:opacity-50"
+              title={t('signups.reissueWarning')}
             >
-              {copiedId === req.id ? t('signups.copied') : t('signups.copyLink')}
+              {acting === req.id ? '…' : t('signups.reissue')}
+            </button>
+          </div>
+        )
+      }
+
+      return (
+        <div className="flex w-64 flex-col gap-2 rounded-lg border border-accent/30 bg-accent/5 p-2.5">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-accent">
+            {t('signups.credentials')}
+          </span>
+
+          <dl className="flex flex-col gap-1.5">
+            <div>
+              <dt className="text-[10px] text-slate">{t('signups.tempId')}</dt>
+              <dd className="font-mono text-xs font-semibold text-ink">{creds.tempIdentifier}</dd>
+            </div>
+            <div>
+              <dt className="text-[10px] text-slate">{t('signups.tempEmail')}</dt>
+              <dd className="font-mono text-[11px] break-all text-ink">{creds.tempEmail}</dd>
+            </div>
+            <div>
+              <dt className="text-[10px] text-slate">{t('signups.tempCode')}</dt>
+              <dd className="font-mono text-sm font-bold tracking-wider text-ink">{creds.tempCode}</dd>
+            </div>
+          </dl>
+
+          <p className="text-[10px] leading-snug text-slate">{t('signups.credentialsOnce')}</p>
+
+          <div className="flex flex-wrap gap-1.5">
+            <a
+              href={whatsappUrl(req.phone, req.schoolName, creds)}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded bg-positive px-2 py-1 text-[10px] font-medium text-white"
+            >
+              {t('signups.sendWhatsapp')}
+            </a>
+            <button
+              type="button"
+              onClick={() => copyCredentials(req, creds)}
+              className="rounded bg-ink px-2 py-1 text-[10px] font-medium text-white"
+            >
+              {copiedId === req.id ? t('signups.copied') : t('signups.copyAll')}
             </button>
           </div>
         </div>

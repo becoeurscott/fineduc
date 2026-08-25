@@ -36,6 +36,21 @@ export class AdminSignupController {
     }
   }
 
+  @Post(':id/reissue-code')
+  @HttpCode(200)
+  async reissueCode(@Param('id') id: string) {
+    try {
+      return await this.setup.reissueCode(id)
+    } catch (err) {
+      if (err instanceof SetupError) {
+        const status =
+          err.code === 'NOT_FOUND' ? HttpStatus.NOT_FOUND : HttpStatus.BAD_REQUEST
+        throw new HttpException({ message: err.message, code: err.code }, status)
+      }
+      throw err
+    }
+  }
+
   @Post(':id/reject')
   @HttpCode(200)
   async reject(@Param('id') id: string, @Body() body: unknown) {
