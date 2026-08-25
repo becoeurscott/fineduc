@@ -2,6 +2,45 @@
 
 import { useState } from 'react'
 
+/**
+ * The API stores country as CHAR(2) and validates it as exactly two
+ * characters, so the option VALUE must be the ISO code — sending the display
+ * name ("Cameroun") fails validation with a 422 before anything is created.
+ * 'XX' is the ISO user-assigned code for "unspecified"; the API's currency
+ * and timezone lookups already fall back to XAF / Africa/Douala for it.
+ */
+const COUNTRIES = [
+  { code: 'CM', fr: 'Cameroun', en: 'Cameroon' },
+  { code: 'CI', fr: 'Côte d’Ivoire', en: 'Ivory Coast' },
+  { code: 'SN', fr: 'Sénégal', en: 'Senegal' },
+  { code: 'CD', fr: 'RDC', en: 'DRC' },
+  { code: 'GA', fr: 'Gabon', en: 'Gabon' },
+  { code: 'CG', fr: 'Congo', en: 'Congo' },
+  { code: 'TD', fr: 'Tchad', en: 'Chad' },
+  { code: 'XX', fr: 'Autre', en: 'Other' },
+] as const
+
+/**
+ * The API speaks RFC 9457 problem+json: the human-readable reason is in
+ * `detail`, and Zod field failures arrive in `errors`. A plain `body.message`
+ * read is always undefined, which is what turned "this email is already
+ * used" into a bare "Erreur serveur".
+ */
+function apiErrorMessage(body: unknown, fallback: string): string {
+  const problem = body as {
+    detail?: string
+    message?: string
+    errors?: Array<{ path?: string; message?: string }>
+  } | null
+
+  const fieldErrors = problem?.errors
+    ?.map((issue) => [issue.path, issue.message].filter(Boolean).join(': '))
+    .filter(Boolean)
+
+  if (fieldErrors?.length) return fieldErrors.join(' · ')
+  return problem?.detail ?? problem?.message ?? fallback
+}
+
 const COPY = {
   fr: {
     steps: ['Votre école', 'Vérification', 'Mot de passe'],
@@ -18,7 +57,6 @@ const COPY = {
     students: 'Nombre d’élèves (approximatif)',
     studentsPlaceholder: '400',
     country: 'Pays',
-    countries: ['Cameroun', 'Côte d’Ivoire', 'Sénégal', 'RDC', 'Gabon', 'Congo', 'Tchad', 'Autre'] as const,
     next: 'Continuer',
     verifyTitle: 'Vérifiez votre e-mail',
     verifySubtitle: 'Nous avons envoyé un code à 6 chiffres à',
@@ -52,7 +90,6 @@ const COPY = {
     students: 'Number of students (approximate)',
     studentsPlaceholder: '400',
     country: 'Country',
-    countries: ['Cameroon', 'Ivory Coast', 'Senegal', 'DRC', 'Gabon', 'Congo', 'Chad', 'Other'] as const,
     next: 'Continue',
     verifyTitle: 'Verify your email',
     verifySubtitle: 'We sent a 6-digit code to',
@@ -85,7 +122,7 @@ export function SignupForm({ locale }: { locale: 'fr' | 'en' }) {
     email: '',
     phone: '',
     students: '',
-    country: c.countries[0] as string,
+    country: COUNTRIES[0].code as string,
   })
   const [emailCode, setEmailCode] = useState('')
   const [phoneCode, setPhoneCode] = useState('')
@@ -121,7 +158,7 @@ export function SignupForm({ locale }: { locale: 'fr' | 'en' }) {
       })
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
-        throw new Error(body.detail ?? body.message ?? 'Erreur serveur')
+        throw new Error(apiErrorMessage(body, 'Erreur serveur'))
       }
       setStep(1)
     } catch (err) {
@@ -143,7 +180,7 @@ export function SignupForm({ locale }: { locale: 'fr' | 'en' }) {
       })
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
-        throw new Error(body.detail ?? body.message ?? 'Code invalide')
+        throw new Error(apiErrorMessage(body, 'Code invalide'))
       }
       setStep(2)
     } catch (err) {
@@ -165,7 +202,7 @@ export function SignupForm({ locale }: { locale: 'fr' | 'en' }) {
       })
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
-        throw new Error(body.detail ?? body.message ?? 'Code invalide')
+        throw new Error(apiErrorMessage(body, 'Code invalide'))
       }
       setStep(3)
     } catch (err) {
@@ -187,7 +224,7 @@ export function SignupForm({ locale }: { locale: 'fr' | 'en' }) {
       })
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
-        throw new Error(body.detail ?? body.message ?? 'Erreur serveur')
+        throw new Error(apiErrorMessage(body, 'Erreur serveur'))
       }
       setStep(4)
       const dashboardUrl = process.env.NEXT_PUBLIC_DASHBOARD_URL ?? 'http://localhost:3020/login'
@@ -319,8 +356,10 @@ export function SignupForm({ locale }: { locale: 'fr' | 'en' }) {
             <label className="block">
               <span className="mb-1.5 block text-xs font-medium text-slate">{c.country}</span>
               <select value={form.country} onChange={set('country')} className={field}>
-                {c.countries.map((country) => (
-                  <option key={country}>{country}</option>
+                {COUNTRIES.map((country) => (
+                  <option key={country.code} value={country.code}>
+                    {country[locale]}
+                  </option>
                 ))}
               </select>
             </label>
