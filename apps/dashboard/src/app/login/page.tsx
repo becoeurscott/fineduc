@@ -4,8 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth'
 
-type Step = 'school-email' | 'school-code' | 'staff-login' | 'select-tenant' | 'sending'
-type Mode = 'school' | 'staff'
+type Step = 'credentials' | 'select-tenant' | 'sending'
 
 interface Membership {
   id: string
@@ -20,11 +19,9 @@ export default function LoginPage() {
   const { login, isAuthenticated } = useAuth()
   const router = useRouter()
 
-  const [mode, setMode] = useState<Mode>('school')
-  const [step, setStep] = useState<Step>('school-email')
+  const [step, setStep] = useState<Step>('credentials')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [code, setCode] = useState('')
   const [error, setError] = useState('')
   const [memberships, setMemberships] = useState<Membership[]>([])
   const [selectionToken, setSelectionToken] = useState('')
@@ -34,50 +31,7 @@ export default function LoginPage() {
     return null
   }
 
-  function switchMode(m: Mode) {
-    setMode(m)
-    setError('')
-    setEmail('')
-    setPassword('')
-    setCode('')
-    setStep(m === 'school' ? 'school-email' : 'staff-login')
-  }
-
-  function handleEmailNext(e: React.FormEvent) {
-    e.preventDefault()
-    setError('')
-    setStep('school-code')
-  }
-
-  async function handleSchoolLogin(e: React.FormEvent) {
-    e.preventDefault()
-    setError('')
-    setStep('sending')
-
-    try {
-      const res = await fetch(`${API_URL}/auth/login-school`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ email, code }),
-      })
-
-      if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as { detail?: string; message?: string } | null
-        setError(body?.detail ?? body?.message ?? 'E-mail ou code incorrect')
-        setStep('school-code')
-        return
-      }
-
-      const data = (await res.json()) as { accessToken: string; refreshToken: string; needsOnboarding?: boolean }
-      login(data.accessToken, data.refreshToken)
-      router.replace(data.needsOnboarding ? '/onboarding' : '/')
-    } catch {
-      setError('Impossible de joindre le serveur.')
-      setStep('school-code')
-    }
-  }
-
-  async function handleStaffLogin(e: React.FormEvent) {
+  async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
     setError('')
     setStep('sending')
@@ -92,7 +46,7 @@ export default function LoginPage() {
       if (!res.ok) {
         const body = (await res.json().catch(() => null)) as { detail?: string; title?: string } | null
         setError(body?.detail ?? body?.title ?? 'Identifiants incorrects')
-        setStep('staff-login')
+        setStep('credentials')
         return
       }
 
@@ -119,15 +73,15 @@ export default function LoginPage() {
 
       if (data.totpRequired) {
         setError('2FA non supporté dans cette version.')
-        setStep('staff-login')
+        setStep('credentials')
         return
       }
 
       setError('Réponse inattendue du serveur.')
-      setStep('staff-login')
+      setStep('credentials')
     } catch {
       setError('Impossible de joindre le serveur.')
-      setStep('staff-login')
+      setStep('credentials')
     }
   }
 
@@ -168,105 +122,8 @@ export default function LoginPage() {
           <p className="mt-1 text-sm text-slate">Tableau de bord</p>
         </div>
 
-        {/* Mode toggle — visible on email/code/staff steps */}
-        {(step === 'school-email' || step === 'school-code' || step === 'staff-login') && (
-          <div className="mb-5 flex rounded-lg border border-line bg-surface p-0.5">
-            <button
-              type="button"
-              onClick={() => switchMode('school')}
-              className={`flex-1 rounded-md px-3 py-2 text-xs font-medium transition-colors ${
-                mode === 'school' ? 'bg-ink text-white' : 'text-slate hover:text-ink'
-              }`}
-            >
-              Première connexion
-            </button>
-            <button
-              type="button"
-              onClick={() => switchMode('staff')}
-              className={`flex-1 rounded-md px-3 py-2 text-xs font-medium transition-colors ${
-                mode === 'staff' ? 'bg-ink text-white' : 'text-slate hover:text-ink'
-              }`}
-            >
-              Connexion personnel
-            </button>
-          </div>
-        )}
-
-        {/* Step 1: school enters temp email */}
-        {step === 'school-email' && (
-          <form onSubmit={handleEmailNext} className="flex flex-col gap-4">
-            <div className="rounded-lg border border-accent/30 bg-accent/5 p-3">
-              <p className="text-xs leading-relaxed text-slate">
-                Entrez l&apos;e-mail temporaire re&ccedil;u par WhatsApp.
-              </p>
-            </div>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium text-ink">E-mail temporaire</span>
-              <input
-                type="email"
-                required
-                autoFocus
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="fin-2026-0001@fineduc.school"
-                className="h-11 rounded-[var(--radius-control)] border border-line bg-surface px-3 font-mono text-sm text-ink placeholder:text-slate/50 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
-              />
-            </label>
-            {error && <p className="text-sm text-danger">{error}</p>}
-            <button
-              type="submit"
-              className="mt-2 h-11 rounded-[var(--radius-control)] bg-ink text-sm font-semibold text-white transition-colors hover:bg-ink/90"
-            >
-              Suivant
-            </button>
-          </form>
-        )}
-
-        {/* Step 2: school enters access code */}
-        {step === 'school-code' && (
-          <form onSubmit={(e) => void handleSchoolLogin(e)} className="flex flex-col gap-4">
-            <div className="rounded-lg border border-line bg-surface p-3">
-              <p className="text-xs text-slate">
-                E-mail : <strong className="font-mono text-ink">{email}</strong>
-              </p>
-            </div>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium text-ink">Code d&apos;acc&egrave;s</span>
-              <input
-                type="text"
-                required
-                autoFocus
-                autoComplete="one-time-code"
-                value={code}
-                onChange={(e) => setCode(e.target.value.toUpperCase())}
-                placeholder="XXXX-XXXX-XXXX"
-                className="h-11 rounded-[var(--radius-control)] border border-line bg-surface px-3 font-mono text-sm tracking-wider text-ink placeholder:text-slate/50 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
-              />
-              <span className="text-xs text-slate">
-                Le code re&ccedil;u par WhatsApp lors de la validation de votre inscription.
-              </span>
-            </label>
-            {error && <p className="text-sm text-danger">{error}</p>}
-            <button
-              type="submit"
-              className="mt-2 h-11 rounded-[var(--radius-control)] bg-ink text-sm font-semibold text-white transition-colors hover:bg-ink/90"
-            >
-              Se connecter
-            </button>
-            <button
-              type="button"
-              onClick={() => { setStep('school-email'); setCode(''); setError('') }}
-              className="text-sm text-slate underline"
-            >
-              Modifier l&apos;e-mail
-            </button>
-          </form>
-        )}
-
-        {/* Staff login: email + password */}
-        {step === 'staff-login' && (
-          <form onSubmit={(e) => void handleStaffLogin(e)} className="flex flex-col gap-4">
+        {step === 'credentials' && (
+          <form onSubmit={(e) => void handleLogin(e)} className="flex flex-col gap-4">
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium text-ink">Adresse e-mail</span>
               <input
@@ -280,6 +137,7 @@ export default function LoginPage() {
                 className="h-11 rounded-[var(--radius-control)] border border-line bg-surface px-3 text-sm text-ink placeholder:text-slate/50 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
               />
             </label>
+
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium text-ink">Mot de passe</span>
               <input
@@ -291,19 +149,28 @@ export default function LoginPage() {
                 className="h-11 rounded-[var(--radius-control)] border border-line bg-surface px-3 text-sm text-ink placeholder:text-slate/50 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
               />
             </label>
+
             {error && <p className="text-sm text-danger">{error}</p>}
+
             <button
               type="submit"
               className="mt-2 h-11 rounded-[var(--radius-control)] bg-ink text-sm font-semibold text-white transition-colors hover:bg-ink/90"
             >
               Se connecter
             </button>
+
+            <a
+              href="/first-login"
+              className="mt-1 text-center text-xs text-slate underline hover:text-ink"
+            >
+              Premi&egrave;re connexion &eacute;cole ?
+            </a>
           </form>
         )}
 
         {step === 'select-tenant' && (
           <div className="flex flex-col gap-3">
-            <p className="text-center text-sm text-slate">Choisissez votre école</p>
+            <p className="text-center text-sm text-slate">Choisissez votre &eacute;cole</p>
             {memberships.map((m) => (
               <button
                 key={m.tenantId}
@@ -323,7 +190,7 @@ export default function LoginPage() {
             {error && <p className="text-sm text-danger">{error}</p>}
             <button
               type="button"
-              onClick={() => switchMode('school')}
+              onClick={() => { setStep('credentials'); setError('') }}
               className="mt-2 text-sm text-slate underline"
             >
               Retour

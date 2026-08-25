@@ -116,7 +116,7 @@ export class SetupService {
 
   private loginUrl(): string {
     const base = process.env['NEXT_PUBLIC_DASHBOARD_URL'] ?? 'https://fineduc-dashboard.vercel.app'
-    return `${base.replace(/\/$/, '').replace(/\/login$/, '')}/login`
+    return `${base.replace(/\/$/, '')}/first-login`
   }
 
   async rejectSignup(signupId: string, reason: string): Promise<void> {

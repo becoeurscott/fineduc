@@ -28,7 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!hydrated) return
-    if (!token && pathname !== '/login' && !pathname.startsWith('/setup') && !pathname.startsWith('/onboarding')) {
+    if (!token && pathname !== '/login' && pathname !== '/first-login' && !pathname.startsWith('/setup') && !pathname.startsWith('/onboarding')) {
       router.replace('/login')
     }
   }, [hydrated, token, pathname, router])
