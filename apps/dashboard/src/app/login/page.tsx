@@ -15,6 +15,10 @@ interface Membership {
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3010'
 
+function isSchoolEmail(email: string): boolean {
+  return email.toLowerCase().trim().endsWith('@fineduc.school')
+}
+
 export default function LoginPage() {
   const { login, isAuthenticated } = useAuth()
   const router = useRouter()
@@ -22,6 +26,7 @@ export default function LoginPage() {
   const [step, setStep] = useState<Step>('credentials')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [code, setCode] = useState('')
   const [error, setError] = useState('')
   const [memberships, setMemberships] = useState<Membership[]>([])
   const [selectionToken, setSelectionToken] = useState('')
@@ -31,12 +36,34 @@ export default function LoginPage() {
     return null
   }
 
+  const schoolMode = isSchoolEmail(email)
+
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
     setError('')
     setStep('sending')
 
     try {
+      if (schoolMode) {
+        const res = await fetch(`${API_URL}/auth/login-school`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ email, code }),
+        })
+
+        if (!res.ok) {
+          const body = (await res.json().catch(() => null)) as { detail?: string; message?: string } | null
+          setError(body?.detail ?? body?.message ?? 'Code d’accès incorrect')
+          setStep('credentials')
+          return
+        }
+
+        const data = (await res.json()) as { accessToken: string; refreshToken: string }
+        login(data.accessToken, data.refreshToken)
+        router.replace('/')
+        return
+      }
+
       const res = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -132,22 +159,40 @@ export default function LoginPage() {
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="directeur@ecole.com"
+                placeholder="fin-2026-0001@fineduc.school"
                 className="h-11 rounded-[var(--radius-control)] border border-line bg-surface px-3 text-sm text-ink placeholder:text-slate/50 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
               />
             </label>
 
-            <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium text-ink">Mot de passe</span>
-              <input
-                type="password"
-                required
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="h-11 rounded-[var(--radius-control)] border border-line bg-surface px-3 text-sm text-ink placeholder:text-slate/50 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
-              />
-            </label>
+            {schoolMode ? (
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium text-ink">Code d&apos;acc&egrave;s</span>
+                <input
+                  type="text"
+                  required
+                  autoComplete="one-time-code"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.toUpperCase())}
+                  placeholder="XXXX-XXXX-XXXX"
+                  className="h-11 rounded-[var(--radius-control)] border border-line bg-surface px-3 font-mono text-sm tracking-wider text-ink placeholder:text-slate/50 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                />
+                <span className="text-xs text-slate">
+                  Le code re&ccedil;u par WhatsApp lors de la validation de votre inscription.
+                </span>
+              </label>
+            ) : (
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium text-ink">Mot de passe</span>
+                <input
+                  type="password"
+                  required
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="h-11 rounded-[var(--radius-control)] border border-line bg-surface px-3 text-sm text-ink placeholder:text-slate/50 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                />
+              </label>
+            )}
 
             {error && <p className="text-sm text-danger">{error}</p>}
 
@@ -162,7 +207,7 @@ export default function LoginPage() {
 
         {step === 'select-tenant' && (
           <div className="flex flex-col gap-3">
-            <p className="text-center text-sm text-slate">Choisissez votre école</p>
+            <p className="text-center text-sm text-slate">Choisissez votre &eacute;cole</p>
             {memberships.map((m) => (
               <button
                 key={m.tenantId}

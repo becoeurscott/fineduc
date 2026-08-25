@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common'
+import argon2 from 'argon2'
 import { PrismaService } from '../platform/prisma.service.js'
 import { AuthService } from './auth.service.js'
 import type { SignupRequestListItem, ApproveSignupResponse } from '@fineduc/contracts'
@@ -134,6 +135,105 @@ export class SetupService {
     })
 
     this.logger.log(`Rejected signup "${signup.schoolName}" — reason: ${reason}`)
+  }
+
+  async loginSchool(email: string, code: string): Promise<{
+    accessToken: string
+    refreshToken: string
+    expiresIn: number
+    needsOnboarding: boolean
+  }> {
+    const signup = await this.prisma.client.signupRequest.findUnique({
+      where: { tempEmail: email.toLowerCase().trim() },
+    })
+    if (!signup || !signup.tempCodeHash) {
+      throw new SetupError('INVALID_CREDENTIALS', 'Invalid email or access code')
+    }
+    if (signup.status !== 'approved' && signup.status !== 'setup_complete') {
+      throw new SetupError('INVALID_CREDENTIALS', 'Invalid email or access code')
+    }
+
+    const codeValid = await argon2.verify(signup.tempCodeHash!, code)
+    if (!codeValid) {
+      throw new SetupError('INVALID_CREDENTIALS', 'Invalid email or access code')
+    }
+
+    if (signup.status === 'setup_complete') {
+      const user = await this.prisma.client.user.findUnique({
+        where: { email: signup.tempEmail! },
+        include: { memberships: { where: { status: 'active' } } },
+      })
+      if (!user || !user.memberships[0]) {
+        throw new SetupError('INVALID_CREDENTIALS', 'Account not found')
+      }
+      const m = user.memberships[0]
+      const tokens = await this.auth.issueTokens(user.id, user.email, m.tenantId, m.role)
+      return { ...tokens, expiresIn: ACCESS_TOKEN_EXPIRY_SECONDS, needsOnboarding: false }
+    }
+
+    const result = await this.prisma.client.$transaction(async (tx) => {
+      const tenant = await tx.tenant.create({
+        data: {
+          name: signup.schoolName,
+          country: signup.country,
+          currency: currencyForCountry(signup.country),
+          timezone: timezoneForCountry(signup.country),
+          locale: 'fr',
+          plan: 'essentiel',
+          status: 'trial',
+          settings: {},
+        },
+      })
+
+      await tx.site.create({
+        data: {
+          tenantId: tenant.id,
+          name: 'Campus principal',
+          isPrimary: true,
+        },
+      })
+
+      const passwordHash = await this.auth.hashPassword(code)
+      const user = await tx.user.create({
+        data: {
+          email: signup.tempEmail!,
+          phone: signup.phone,
+          name: signup.contactName,
+          passwordHash,
+          status: 'active',
+        },
+      })
+
+      await tx.membership.create({
+        data: {
+          tenantId: tenant.id,
+          userId: user.id,
+          role: 'director',
+          status: 'active',
+        },
+      })
+
+      await tx.signupRequest.update({
+        where: { id: signup.id },
+        data: {
+          status: 'setup_complete',
+          completedAt: new Date(),
+        },
+      })
+
+      return { user, tenant }
+    })
+
+    const tokens = await this.auth.issueTokens(
+      result.user.id,
+      result.user.email,
+      result.tenant.id,
+      'director',
+    )
+
+    this.logger.log(`School "${signup.schoolName}" signed in for the first time`)
+
+    return { ...tokens, expiresIn: ACCESS_TOKEN_EXPIRY_SECONDS, needsOnboarding: true }
   }
 
   async getSetupInfo(token: string) {

@@ -3,9 +3,10 @@
  * All auth endpoints are @Public() (pre-authentication) except logout
  * and 2FA enrollment.
  */
-import { Body, Controller, Get, Post } from '@nestjs/common'
+import { Body, Controller, Get, HttpException, HttpStatus, Post } from '@nestjs/common'
 import {
   LoginRequestSchema,
+  SchoolLoginRequestSchema,
   SelectTenantRequestSchema,
   RefreshRequestSchema,
   TotpVerifyRequestSchema,
@@ -16,6 +17,7 @@ import { Roles } from '../../common/decorators/roles.decorator.js'
 import { SkipAudit } from '../../common/decorators/skip-audit.decorator.js'
 import { CurrentUser, type AuthenticatedUser } from '../../common/decorators/current-user.decorator.js'
 import { AuthService } from './auth.service.js'
+import { SetupService, SetupError } from './setup.service.js'
 import { TotpService } from './totp.service.js'
 import { UserService } from './user.service.js'
 
@@ -23,6 +25,7 @@ import { UserService } from './user.service.js'
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
+    private readonly setupService: SetupService,
     private readonly totpService: TotpService,
     private readonly userService: UserService,
   ) {}
@@ -38,6 +41,28 @@ export class AuthController {
   async login(@Body() body: unknown) {
     const input = LoginRequestSchema.parse(body)
     return this.authService.login(input.email, input.password)
+  }
+
+  /**
+   * POST /auth/login-school — school signs in with temp email + access code.
+   * First login provisions tenant/user/membership; subsequent logins reuse them.
+   */
+  @Public()
+  @SkipAudit()
+  @Post('login-school')
+  async loginSchool(@Body() body: unknown) {
+    const input = SchoolLoginRequestSchema.parse(body)
+    try {
+      return await this.setupService.loginSchool(input.email, input.code)
+    } catch (err) {
+      if (err instanceof SetupError) {
+        throw new HttpException(
+          { message: err.message, code: err.code },
+          err.code === 'INVALID_CREDENTIALS' ? HttpStatus.UNAUTHORIZED : HttpStatus.BAD_REQUEST,
+        )
+      }
+      throw err
+    }
   }
 
   /**

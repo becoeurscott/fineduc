@@ -51,6 +51,16 @@ export const LoginResponseSchema = z.object({
 export type LoginResponse = z.infer<typeof LoginResponseSchema>
 
 // ---------------------------------------------------------------------------
+// School login (temp email + access code)
+// ---------------------------------------------------------------------------
+
+export const SchoolLoginRequestSchema = z.object({
+  email: z.string().email(),
+  code: z.string().min(1, 'Access code is required'),
+})
+export type SchoolLoginRequest = z.infer<typeof SchoolLoginRequestSchema>
+
+// ---------------------------------------------------------------------------
 // Tenant selection (multi-tenant users)
 // ---------------------------------------------------------------------------
 
