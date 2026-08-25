@@ -16,11 +16,13 @@ import {
 } from '@fineduc/ui'
 import { getApi, qk } from '@/lib/api'
 import { useApp } from '@/lib/app-context'
+import type { TranslationKey } from '@/lib/i18n'
 import { PageHeader } from '@/components/shell'
 import type {
   SignupRequestListItem,
   SignupRequestStatus,
   ApproveSignupResponse,
+  OnboardingStep,
 } from '@fineduc/contracts'
 
 /**
@@ -50,6 +52,50 @@ const STATUS_TONE: Record<SignupRequestStatus, 'neutral' | 'warning' | 'accent' 
   rejected: 'danger',
   setup_complete: 'positive',
   expired: 'neutral',
+}
+
+const ONBOARDING_STEPS: OnboardingStep[] = ['approved', 'first_login', 'email_replaced', 'phone_verified', 'complete']
+
+function stepIndex(step: OnboardingStep): number {
+  const idx = ONBOARDING_STEPS.indexOf(step)
+  return idx === -1 ? -1 : idx
+}
+
+const STEP_LABELS: Record<OnboardingStep, TranslationKey> = {
+  pending: 'signups.step.pending',
+  approved: 'signups.step.approved',
+  first_login: 'signups.step.first_login',
+  email_replaced: 'signups.step.email_replaced',
+  phone_verified: 'signups.step.phone_verified',
+  complete: 'signups.step.complete',
+  rejected: 'signups.step.rejected',
+  expired: 'signups.step.expired',
+}
+
+function OnboardingProgress({ step, t }: { step: OnboardingStep; t: (key: TranslationKey) => string }) {
+  if (step === 'pending' || step === 'rejected' || step === 'expired') {
+    return <span className="text-xs text-slate">{t(STEP_LABELS[step])}</span>
+  }
+
+  const current = stepIndex(step)
+
+  return (
+    <div className="flex flex-col gap-1.5 min-w-[120px]">
+      <div className="flex gap-0.5">
+        {ONBOARDING_STEPS.map((s, i) => (
+          <div
+            key={s}
+            className={`h-1.5 flex-1 rounded-full ${
+              i <= current ? 'bg-accent' : 'bg-line'
+            }`}
+          />
+        ))}
+      </div>
+      <span className="text-[10px] font-medium text-ink">
+        {t(STEP_LABELS[step])}
+      </span>
+    </div>
+  )
 }
 
 export default function SignupsPage() {
@@ -284,6 +330,7 @@ export default function SignupsPage() {
                   <Th>{t('signups.country')}</Th>
                   <Th align="right">{t('signups.students')}</Th>
                   <Th>{t('signups.status')}</Th>
+                  <Th>{t('signups.progress')}</Th>
                   <Th align="right">{t('signups.date')}</Th>
                   <Th>{t('signups.actions')}</Th>
                 </tr>
@@ -303,6 +350,9 @@ export default function SignupsPage() {
                     <Td align="right">{req.studentCount ?? '—'}</Td>
                     <Td>
                       <Badge tone={STATUS_TONE[req.status]}>{statusLabel(req.status)}</Badge>
+                    </Td>
+                    <Td>
+                      <OnboardingProgress step={req.onboardingStep} t={t} />
                     </Td>
                     <Td align="right" className="whitespace-nowrap text-xs text-slate">
                       {new Date(req.createdAt).toLocaleDateString(intlLocale, {

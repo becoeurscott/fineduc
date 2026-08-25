@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common'
 import argon2 from 'argon2'
 import { PrismaService } from '../platform/prisma.service.js'
 import { AuthService } from './auth.service.js'
-import type { SignupRequestListItem, ApproveSignupResponse } from '@fineduc/contracts'
+import type { SignupRequestListItem, ApproveSignupResponse, OnboardingStep } from '@fineduc/contracts'
 
 const CODE_EXPIRY_MINUTES = 10
 const MAX_CODE_ATTEMPTS = 5
@@ -23,27 +23,75 @@ export class SetupService {
 
     const dashboardUrl = process.env['NEXT_PUBLIC_DASHBOARD_URL'] ?? process.env['PUBLIC_PAY_URL'] ?? ''
 
-    return rows.map((r) => ({
-      id: r.id,
-      schoolName: r.schoolName,
-      contactName: r.contactName,
-      role: r.role,
-      email: r.email,
-      phone: r.phone,
-      studentCount: r.studentCount,
-      country: r.country,
-      status: r.status as SignupRequestListItem['status'],
-      emailVerified: r.emailVerified,
-      phoneVerified: r.phoneVerified,
-      setupToken: r.setupToken,
-      setupUrl: r.setupToken ? `${dashboardUrl}/setup/${r.setupToken}` : null,
-      tempIdentifier: r.tempIdentifier,
-      tempEmail: r.tempEmail,
-      createdAt: r.createdAt.toISOString(),
-      approvedAt: r.approvedAt?.toISOString() ?? null,
-      completedAt: r.completedAt?.toISOString() ?? null,
-      expiresAt: r.expiresAt.toISOString(),
-    }))
+    const completedIds = rows
+      .filter((r) => r.status === 'setup_complete' && r.tempEmail)
+
+    const onboardingMap = new Map<string, OnboardingStep>()
+
+    if (completedIds.length > 0) {
+      const tempEmails = completedIds.map((r) => r.tempEmail!)
+      const users = await this.prisma.client.user.findMany({
+        where: {
+          OR: [
+            { email: { in: tempEmails } },
+            { email: { notIn: tempEmails }, memberships: { some: { status: 'active' } } },
+          ],
+        },
+        select: { email: true, phone: true, memberships: { select: { tenant: { select: { name: true } } } } },
+      })
+
+      for (const r of completedIds) {
+        let user = users.find((u) => u.email === r.tempEmail)
+        if (!user) {
+          user = users.find((u) =>
+            !u.email.endsWith('@fineduc.school') &&
+            u.memberships.some((m) => m.tenant.name === r.schoolName),
+          )
+        }
+
+        if (!user) {
+          onboardingMap.set(r.id, 'first_login')
+        } else if (user.email.endsWith('@fineduc.school')) {
+          onboardingMap.set(r.id, 'first_login')
+        } else if (!r.phoneVerified) {
+          onboardingMap.set(r.id, 'email_replaced')
+        } else {
+          onboardingMap.set(r.id, 'complete')
+        }
+      }
+    }
+
+    return rows.map((r) => {
+      let onboardingStep: OnboardingStep
+      if (r.status === 'rejected') onboardingStep = 'rejected'
+      else if (r.status === 'expired') onboardingStep = 'expired'
+      else if (r.status === 'pending') onboardingStep = 'pending'
+      else if (r.status === 'approved') onboardingStep = 'approved'
+      else onboardingStep = onboardingMap.get(r.id) ?? 'first_login'
+
+      return {
+        id: r.id,
+        schoolName: r.schoolName,
+        contactName: r.contactName,
+        role: r.role,
+        email: r.email,
+        phone: r.phone,
+        studentCount: r.studentCount,
+        country: r.country,
+        status: r.status as SignupRequestListItem['status'],
+        emailVerified: r.emailVerified,
+        phoneVerified: r.phoneVerified,
+        setupToken: r.setupToken,
+        setupUrl: r.setupToken ? `${dashboardUrl}/setup/${r.setupToken}` : null,
+        tempIdentifier: r.tempIdentifier,
+        tempEmail: r.tempEmail,
+        onboardingStep,
+        createdAt: r.createdAt.toISOString(),
+        approvedAt: r.approvedAt?.toISOString() ?? null,
+        completedAt: r.completedAt?.toISOString() ?? null,
+        expiresAt: r.expiresAt.toISOString(),
+      }
+    })
   }
 
   async approveSignup(signupId: string): Promise<ApproveSignupResponse> {

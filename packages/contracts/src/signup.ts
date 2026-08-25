@@ -50,6 +50,18 @@ export type ResendCodeRequest = z.infer<typeof ResendCodeRequestSchema>
 export const SignupRequestStatusSchema = z.enum(['pending', 'approved', 'rejected', 'setup_complete', 'expired'])
 export type SignupRequestStatus = z.infer<typeof SignupRequestStatusSchema>
 
+export const OnboardingStepSchema = z.enum([
+  'pending',
+  'approved',
+  'first_login',
+  'email_replaced',
+  'phone_verified',
+  'complete',
+  'rejected',
+  'expired',
+])
+export type OnboardingStep = z.infer<typeof OnboardingStepSchema>
+
 export const SignupRequestListItemSchema = z.object({
   id: z.string(),
   schoolName: z.string(),
@@ -67,6 +79,7 @@ export const SignupRequestListItemSchema = z.object({
   tempIdentifier: z.string().nullable(),
   /** Login identifier issued at approval. The code is never listed. */
   tempEmail: z.string().nullable(),
+  onboardingStep: OnboardingStepSchema,
   createdAt: z.string(),
   approvedAt: z.string().nullable(),
   completedAt: z.string().nullable(),
