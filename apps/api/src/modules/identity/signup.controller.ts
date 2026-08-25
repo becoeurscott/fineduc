@@ -77,6 +77,7 @@ export class SignupController {
       if (err instanceof SignupError) {
         const status =
           err.code === 'EMAIL_TAKEN' ? HttpStatus.CONFLICT :
+          err.code === 'REQUEST_PENDING' ? HttpStatus.CONFLICT :
           err.code === 'TOO_MANY_ATTEMPTS' ? HttpStatus.TOO_MANY_REQUESTS :
           HttpStatus.BAD_REQUEST
         throw new HttpException({ message: err.message, code: err.code }, status)

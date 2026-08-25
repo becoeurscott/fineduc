@@ -355,7 +355,7 @@ export const CONTENT = {
     finalCta: {
       title: 'Prêt à récupérer ce que votre école perd chaque année ?',
       subtitle:
-        'Créez votre compte en 2 minutes. Importez vos élèves, configurez vos tranches, et envoyez votre premier rappel — gratuitement pendant 30 jours.',
+        'Envoyez votre demande en 2 minutes. Notre équipe la valide sous 24 heures et vous envoie vos accès — puis 7 jours d’essai gratuit.',
       cta: 'Créer mon école',
       whatsapp: 'Écrire sur WhatsApp',
     },
@@ -623,7 +623,7 @@ export const CONTENT = {
     },
     finalCta: {
       title: 'Ready to recover what your school loses every year?',
-      subtitle: 'Create your account in 2 minutes. Import your students, set up your instalments, and send your first reminder — free for 30 days.',
+      subtitle: 'Send your request in 2 minutes. Our team reviews it within 24 hours and sends you your access details — then 7 days free.',
       cta: 'Create my school',
       whatsapp: 'Message us on WhatsApp',
     },

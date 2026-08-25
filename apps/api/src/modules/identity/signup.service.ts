@@ -4,7 +4,9 @@ import { AuthService } from './auth.service.js'
 import type { SignupStartRequest } from '@fineduc/contracts'
 
 const CODE_EXPIRY_MINUTES = 10
-const SIGNUP_EXPIRY_HOURS = 24
+// A request now waits on a human, so this is the window an admin has to
+// review it — not the few minutes an automated flow used to need.
+const SIGNUP_EXPIRY_HOURS = 24 * 7
 const MAX_CODE_ATTEMPTS = 5
 const ACCESS_TOKEN_EXPIRY_SECONDS = 900
 
@@ -17,12 +19,34 @@ export class SignupService {
     private readonly auth: AuthService,
   ) {}
 
+  /**
+   * Records a school's request to join. It does NOT create a tenant, a user,
+   * or send a verification code: nothing is provisioned until an admin
+   * approves and issues credentials. Identity is proven later, during
+   * onboarding, when the school swaps its temporary email for a real one.
+   */
   async start(input: SignupStartRequest): Promise<{ signupId: string }> {
     const existing = await this.prisma.client.user.findUnique({
       where: { email: input.email },
     })
     if (existing) {
       throw new SignupError('EMAIL_TAKEN', 'An account with this email already exists')
+    }
+
+    /*
+     * Without this, a school that taps "send" twice — or that comes back the
+     * next day unsure whether the first one went through — lands in the
+     * approval queue two or three times, and an admin has to guess which row
+     * is real. The pending one is the answer, so say so instead.
+     */
+    const pending = await this.prisma.client.signupRequest.findFirst({
+      where: { email: input.email, status: 'pending' },
+    })
+    if (pending) {
+      throw new SignupError(
+        'REQUEST_PENDING',
+        'A request for this email is already awaiting review',
+      )
     }
 
     const signup = await this.prisma.client.signupRequest.create({
@@ -34,11 +58,12 @@ export class SignupService {
         role: input.role,
         studentCount: input.studentCount ?? null,
         country: input.country.toUpperCase(),
+        status: 'pending',
         expiresAt: new Date(Date.now() + SIGNUP_EXPIRY_HOURS * 60 * 60 * 1000),
       },
     })
 
-    await this.sendEmailCode(input.email)
+    this.logger.log(`Signup request from "${input.schoolName}" awaiting review`)
 
     return { signupId: signup.id }
   }

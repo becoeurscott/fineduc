@@ -30,6 +30,13 @@ interface ProblemJson {
   title: string
   status: number
   detail: string
+  /**
+   * Stable machine-readable reason (e.g. `EMAIL_TAKEN`). `detail` is written
+   * in English for operators; a French-first UI needs something it can map to
+   * its own copy, and matching on the prose would break the first time
+   * someone reworded it.
+   */
+  code?: string
   traceId?: string
   errors?: Record<string, string> | Array<{ path: string; message: string }>
 }
@@ -110,11 +117,16 @@ export class ProblemJsonFilter implements ExceptionFilter {
         typeof exceptionResponse === 'string'
           ? exceptionResponse
           : (exceptionResponse as Record<string, unknown>).message ?? exception.message
+      const code =
+        typeof exceptionResponse === 'string'
+          ? undefined
+          : (exceptionResponse as Record<string, unknown>).code
       return {
         type: `https://fineduc.com/errors/HTTP_${status}`,
         title: exception.name,
         status,
         detail: typeof detail === 'string' ? detail : JSON.stringify(detail),
+        ...(typeof code === 'string' ? { code } : {}),
         traceId,
       }
     }
