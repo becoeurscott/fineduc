@@ -509,19 +509,23 @@ model VerificationCode {
 /// Pending school signup — holds form data between step 1 and completion.
 /// Deleted on completion or after 24h by a cleanup job.
 model SignupRequest {
-  id             String    @id @default(uuid()) @db.Uuid
-  email          String
-  phone          String
-  schoolName     String    @map("school_name")
-  contactName    String    @map("contact_name")
-  role           String
-  studentCount   Int?      @map("student_count")
-  country        String    @db.Char(2)
-  emailVerified  Boolean   @default(false) @map("email_verified")
-  phoneVerified  Boolean   @default(false) @map("phone_verified")
-  completedAt    DateTime? @map("completed_at") @db.Timestamptz(6)
-  expiresAt      DateTime  @map("expires_at") @db.Timestamptz(6)
-  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  id              String    @id @default(uuid()) @db.Uuid
+  email           String
+  phone           String
+  schoolName      String    @map("school_name")
+  contactName     String    @map("contact_name")
+  role            String
+  studentCount    Int?      @map("student_count")
+  country         String    @db.Char(2)
+  status          String    @default("pending")
+  setupToken      String?   @unique @map("setup_token")
+  tempIdentifier  String?   @map("temp_identifier")
+  rejectionReason String?   @map("rejection_reason")
+  emailVerified   Boolean   @default(false) @map("email_verified")
+  phoneVerified   Boolean   @default(false) @map("phone_verified")
+  completedAt     DateTime? @map("completed_at") @db.Timestamptz(6)
+  expiresAt       DateTime  @map("expires_at") @db.Timestamptz(6)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([email])
   @@map("signup_request")

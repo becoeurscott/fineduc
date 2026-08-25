@@ -5,13 +5,13 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3010'
+const ADMIN_KEY_STORAGE = 'fineduc_admin_key'
 
 export default function LoginPage() {
   const { login, isAuthenticated } = useAuth()
   const router = useRouter()
 
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [apiKey, setApiKey] = useState('')
   const [error, setError] = useState('')
   const [sending, setSending] = useState(false)
 
@@ -26,40 +26,21 @@ export default function LoginPage() {
     setSending(true)
 
     try {
-      if (email === 'admin@gmail.com' && password === 'admin123') {
-        login('admin-dev-token', 'admin-dev-refresh')
-        router.replace('/')
-        return
-      }
-
-      const res = await fetch(`${API_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+      const res = await fetch(`${API_URL}/admin/signups`, {
+        headers: { 'x-admin-key': apiKey },
       })
 
-      if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as { title?: string } | null
-        setError(body?.title ?? 'Identifiants incorrects')
-        setSending(false)
-        return
-      }
-
-      const data = (await res.json()) as {
-        accessToken?: string
-        refreshToken?: string
-      }
-
-      if (data.accessToken && data.refreshToken) {
-        login(data.accessToken, data.refreshToken)
+      if (res.ok) {
+        localStorage.setItem(ADMIN_KEY_STORAGE, apiKey)
+        login('admin-key-session', 'admin-key-refresh')
         router.replace('/')
         return
       }
 
-      setError('Accès refusé.')
-      setSending(false)
+      setError('Clé API invalide.')
     } catch {
       setError('Impossible de joindre le serveur.')
+    } finally {
       setSending(false)
     }
   }
@@ -80,26 +61,14 @@ export default function LoginPage() {
 
         <form onSubmit={(e) => void handleLogin(e)} className="flex flex-col gap-4">
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-ink">Adresse e-mail</span>
-            <input
-              type="email"
-              required
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@fineduc.com"
-              className={inputClass}
-            />
-          </label>
-
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-ink">Mot de passe</span>
+            <span className="text-sm font-medium text-ink">Clé API administrateur</span>
             <input
               type="password"
               required
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="off"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder="Entrez votre clé API"
               className={inputClass}
             />
           </label>
@@ -111,7 +80,7 @@ export default function LoginPage() {
             disabled={sending}
             className="mt-2 h-11 rounded-[var(--radius-control)] bg-ink text-sm font-semibold text-white transition-colors hover:bg-ink/90 disabled:opacity-50"
           >
-            {sending ? 'Connexion…' : 'Se connecter'}
+            {sending ? 'Vérification…' : 'Se connecter'}
           </button>
         </form>
       </div>

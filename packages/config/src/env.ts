@@ -99,6 +99,8 @@ const EnvSchema = z
     S3_SECRET_ACCESS_KEY: z.string().default(''),
 
     SENTRY_DSN: z.string().default(''),
+
+    ADMIN_API_KEY: z.string().default(''),
   })
   .superRefine((config, ctx) => {
     if (config.NODE_ENV !== 'production') return
@@ -180,4 +182,5 @@ export const SENSITIVE_ENV_KEYS = [
   'SMS_API_KEY',
   'S3_SECRET_ACCESS_KEY',
   'SENTRY_DSN',
+  'ADMIN_API_KEY',
 ] as const satisfies readonly (keyof Env)[]

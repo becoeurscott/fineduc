@@ -9,10 +9,11 @@ import { AuthController } from './auth.controller.js'
 import { UserController } from './user.controller.js'
 import { SignupController } from './signup.controller.js'
 import { SetupController } from './setup.controller.js'
+import { AdminSignupController } from './admin-signup.controller.js'
 
 @Module({
   imports: [PlatformModule],
-  controllers: [AuthController, UserController, SignupController, SetupController],
+  controllers: [AuthController, UserController, SignupController, SetupController, AdminSignupController],
   providers: [AuthService, TotpService, UserService, SignupService, SetupService],
   exports: [AuthService, UserService],
 })

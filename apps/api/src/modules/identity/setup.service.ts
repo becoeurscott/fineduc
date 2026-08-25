@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { PrismaService } from '../platform/prisma.service.js'
 import { AuthService } from './auth.service.js'
+import type { SignupRequestListItem, ApproveSignupResponse } from '@fineduc/contracts'
 
 const CODE_EXPIRY_MINUTES = 10
 const MAX_CODE_ATTEMPTS = 5
@@ -9,24 +10,112 @@ const ACCESS_TOKEN_EXPIRY_SECONDS = 900
 @Injectable()
 export class SetupService {
   private readonly logger = new Logger(SetupService.name)
-
   constructor(
     private readonly prisma: PrismaService,
     private readonly auth: AuthService,
   ) {}
 
-  async approveSignup(signupId: string) {
+  async listSignupRequests(): Promise<SignupRequestListItem[]> {
+    const rows = await this.prisma.client.signupRequest.findMany({
+      orderBy: { createdAt: 'desc' },
+    })
+
+    const dashboardUrl = process.env['NEXT_PUBLIC_DASHBOARD_URL'] ?? process.env['PUBLIC_PAY_URL'] ?? ''
+
+    return rows.map((r) => ({
+      id: r.id,
+      schoolName: r.schoolName,
+      contactName: r.contactName,
+      role: r.role,
+      email: r.email,
+      phone: r.phone,
+      studentCount: r.studentCount,
+      country: r.country,
+      status: r.status as SignupRequestListItem['status'],
+      emailVerified: r.emailVerified,
+      phoneVerified: r.phoneVerified,
+      setupToken: r.setupToken,
+      setupUrl: r.setupToken ? `${dashboardUrl}/setup/${r.setupToken}` : null,
+      tempIdentifier: r.tempIdentifier,
+      createdAt: r.createdAt.toISOString(),
+      completedAt: r.completedAt?.toISOString() ?? null,
+      expiresAt: r.expiresAt.toISOString(),
+    }))
+  }
+
+  async approveSignup(signupId: string): Promise<ApproveSignupResponse> {
     const signup = await this.prisma.client.signupRequest.findUnique({
       where: { id: signupId },
     })
     if (!signup) throw new SetupError('NOT_FOUND', 'Signup request not found')
-    if (signup.completedAt) throw new SetupError('ALREADY_COMPLETED', 'This request has already been completed')
+    if (signup.status !== 'pending') throw new SetupError('INVALID_STATUS', 'Only pending requests can be approved')
 
     const setupToken = this.generateToken()
     const tempIdentifier = `FIN-${new Date().getFullYear()}-${String(Date.now() % 10000).padStart(4, '0')}`
 
-    const tenant = await this.prisma.client.$transaction(async (tx) => {
-      const t = await tx.tenant.create({
+    const dashboardUrl = process.env['NEXT_PUBLIC_DASHBOARD_URL'] ?? 'https://fineduc-dashboard.vercel.app'
+    const setupUrl = `${dashboardUrl}/setup/${setupToken}`
+
+    await this.prisma.client.signupRequest.update({
+      where: { id: signupId },
+      data: {
+        status: 'approved',
+        setupToken,
+        tempIdentifier,
+      },
+    })
+
+    this.logger.log(`Approved signup "${signup.schoolName}" — temp ID: ${tempIdentifier}`)
+
+    return { setupToken, setupUrl, tempIdentifier }
+  }
+
+  async rejectSignup(signupId: string, reason: string): Promise<void> {
+    const signup = await this.prisma.client.signupRequest.findUnique({
+      where: { id: signupId },
+    })
+    if (!signup) throw new SetupError('NOT_FOUND', 'Signup request not found')
+    if (signup.status !== 'pending') throw new SetupError('INVALID_STATUS', 'Only pending requests can be rejected')
+
+    await this.prisma.client.signupRequest.update({
+      where: { id: signupId },
+      data: {
+        status: 'rejected',
+        rejectionReason: reason,
+      },
+    })
+
+    this.logger.log(`Rejected signup "${signup.schoolName}" — reason: ${reason}`)
+  }
+
+  async getSetupInfo(token: string) {
+    const signup = await this.prisma.client.signupRequest.findUnique({
+      where: { setupToken: token },
+    })
+
+    if (!signup || signup.status !== 'approved') return null
+
+    return {
+      schoolName: signup.schoolName,
+      contactName: signup.contactName,
+      tempIdentifier: signup.tempIdentifier ?? '',
+      email: signup.email,
+      phone: signup.phone,
+    }
+  }
+
+  async setupAccount(token: string, email: string, phone: string, password: string) {
+    const signup = await this.prisma.client.signupRequest.findUnique({
+      where: { setupToken: token },
+    })
+    if (!signup || signup.status !== 'approved') {
+      throw new SetupError('NOT_FOUND', 'Invalid or expired setup token')
+    }
+
+    const passwordHash = await this.auth.hashPassword(password)
+
+    const result = await this.prisma.client.$transaction(async (tx) => {
+      const tenant = await tx.tenant.create({
         data: {
           name: signup.schoolName,
           country: signup.country,
@@ -41,64 +130,66 @@ export class SetupService {
 
       await tx.site.create({
         data: {
-          tenantId: t.id,
+          tenantId: tenant.id,
           name: 'Campus principal',
           isPrimary: true,
         },
       })
 
-      await tx.signupRequest.update({
-        where: { id: signupId },
+      const user = await tx.user.create({
         data: {
-          emailVerified: false,
-          phoneVerified: false,
+          email,
+          phone,
+          name: signup.contactName,
+          passwordHash,
+          status: 'active',
         },
       })
 
-      return t
+      await tx.membership.create({
+        data: {
+          tenantId: tenant.id,
+          userId: user.id,
+          role: 'director',
+          status: 'active',
+        },
+      })
+
+      await tx.signupRequest.update({
+        where: { id: signup.id },
+        data: {
+          status: 'setup_complete',
+          completedAt: new Date(),
+          emailVerified: true,
+          phoneVerified: true,
+        },
+      })
+
+      return { user, tenant }
     })
 
-    await this.prisma.client.signupRequest.update({
-      where: { id: signupId },
-      data: {
-        // Store setupToken and tempIdentifier in the expiresAt field comment
-        // In a real schema we'd add columns; for now we use a convention
-      },
-    })
+    const tokens = await this.auth.issueTokens(
+      result.user.id,
+      result.user.email,
+      result.tenant.id,
+      'director',
+    )
 
-    this.logger.log(`Approved signup "${signup.schoolName}" — temp ID: ${tempIdentifier}, token: ${setupToken}`)
+    this.logger.log(`Setup complete for "${signup.schoolName}" by ${signup.contactName}`)
 
     return {
-      setupToken,
-      tempIdentifier,
-      tenantId: tenant.id,
-      schoolName: signup.schoolName,
-      contactName: signup.contactName,
-      email: signup.email,
-      phone: signup.phone,
+      ...tokens,
+      expiresIn: ACCESS_TOKEN_EXPIRY_SECONDS,
     }
   }
 
-  async getSetupInfo(token: string) {
-    // In production this would look up the token from a setup_tokens table
-    // For now we log a placeholder
-    this.logger.warn(`[DEV] Setup info requested for token: ${token}`)
-    return null
-  }
-
-  async setupAccount(token: string, email: string, phone: string, password: string) {
-    // In production: look up token → get signup + tenant, create user + membership with this hash
-    const passwordHash = await this.auth.hashPassword(password)
-    this.logger.warn(`[DEV] Account setup for token ${token}: email=${email}, phone=${phone}, hash=${passwordHash.slice(0, 12)}…`)
-
-    await this.sendCode(email, 'email')
-
-    return { ok: true }
-  }
-
   async verifySetupCode(token: string, channel: 'email' | 'phone', code: string) {
-    this.logger.debug(`Verifying ${channel} code for setup token ${token}`)
-    const target = channel // In production: resolve from token
+    const signup = await this.prisma.client.signupRequest.findUnique({
+      where: { setupToken: token },
+    })
+    if (!signup) throw new SetupError('NOT_FOUND', 'Invalid setup token')
+
+    const target = channel === 'email' ? signup.email : signup.phone
     const codeHash = await this.hashCode(code)
 
     const record = await this.prisma.client.verificationCode.findFirst({
@@ -136,24 +227,23 @@ export class SetupService {
     })
 
     if (channel === 'email') {
-      // Send phone code next
-      // In production: resolve phone from token
+      await this.sendCode(signup.phone, 'phone')
       return { nextStep: 'verify-phone' as const }
     }
 
-    // Both verified — issue tokens
-    // In production: look up user from token, issue real tokens
     return {
       nextStep: 'complete' as const,
-      accessToken: 'mock-access-token',
-      refreshToken: 'mock-refresh-token',
-      expiresIn: ACCESS_TOKEN_EXPIRY_SECONDS,
     }
   }
 
   async resendSetupCode(token: string, channel: 'email' | 'phone') {
-    // In production: resolve target from token
-    this.logger.warn(`[DEV] Resend ${channel} code for setup token: ${token}`)
+    const signup = await this.prisma.client.signupRequest.findUnique({
+      where: { setupToken: token },
+    })
+    if (!signup) throw new SetupError('NOT_FOUND', 'Invalid setup token')
+
+    const target = channel === 'email' ? signup.email : signup.phone
+    await this.sendCode(target, channel)
   }
 
   private async sendCode(target: string, channel: string): Promise<void> {
