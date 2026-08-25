@@ -44,8 +44,8 @@ export default function LoginPage() {
       })
 
       if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as { title?: string } | null
-        setError(body?.title ?? 'Identifiants incorrects')
+        const body = (await res.json().catch(() => null)) as { detail?: string; title?: string } | null
+        setError(body?.detail ?? body?.title ?? 'Identifiants incorrects')
         setStep('credentials')
         return
       }

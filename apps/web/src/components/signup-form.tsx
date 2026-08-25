@@ -121,7 +121,7 @@ export function SignupForm({ locale }: { locale: 'fr' | 'en' }) {
       })
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
-        throw new Error(body.message ?? 'Erreur serveur')
+        throw new Error(body.detail ?? body.message ?? 'Erreur serveur')
       }
       setStep(1)
     } catch (err) {
@@ -143,7 +143,7 @@ export function SignupForm({ locale }: { locale: 'fr' | 'en' }) {
       })
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
-        throw new Error(body.message ?? 'Code invalide')
+        throw new Error(body.detail ?? body.message ?? 'Code invalide')
       }
       setStep(2)
     } catch (err) {
@@ -165,7 +165,7 @@ export function SignupForm({ locale }: { locale: 'fr' | 'en' }) {
       })
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
-        throw new Error(body.message ?? 'Code invalide')
+        throw new Error(body.detail ?? body.message ?? 'Code invalide')
       }
       setStep(3)
     } catch (err) {
@@ -187,7 +187,7 @@ export function SignupForm({ locale }: { locale: 'fr' | 'en' }) {
       })
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
-        throw new Error(body.message ?? 'Erreur serveur')
+        throw new Error(body.detail ?? body.message ?? 'Erreur serveur')
       }
       setStep(4)
       const dashboardUrl = process.env.NEXT_PUBLIC_DASHBOARD_URL ?? 'http://localhost:3020/login'

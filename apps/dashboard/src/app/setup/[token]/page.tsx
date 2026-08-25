@@ -70,8 +70,8 @@ export default function SetupPage() {
         body: JSON.stringify({ token, email, phone, password }),
       })
       if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as { message?: string } | null
-        setError(body?.message ?? 'Erreur lors de la configuration.')
+        const body = (await res.json().catch(() => null)) as { detail?: string; message?: string } | null
+        setError(body?.detail ?? body?.message ?? 'Erreur lors de la configuration.')
         setSending(false)
         return
       }
@@ -93,8 +93,8 @@ export default function SetupPage() {
         body: JSON.stringify({ token, channel, code }),
       })
       if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as { message?: string } | null
-        setError(body?.message ?? 'Code invalide.')
+        const body = (await res.json().catch(() => null)) as { detail?: string; message?: string } | null
+        setError(body?.detail ?? body?.message ?? 'Code invalide.')
         setSending(false)
         return
       }
