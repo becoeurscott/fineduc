@@ -53,6 +53,78 @@ describe('SetupService.approveSignup', () => {
   })
 })
 
+describe('SetupService first-login provisioning', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mockPrisma: any
+  let service: SetupService
+  let codeHash: string
+  let setConfigCalls: string[]
+
+  beforeAll(async () => {
+    codeHash = await argon2.hash(CODE, { type: argon2.argon2id })
+  })
+
+  beforeEach(() => {
+    setConfigCalls = []
+    const tx = {
+      // withTenant issues set_config before anything else runs; recording it
+      // is how we prove the inserts happen inside a tenant context.
+      $executeRaw: vi.fn((_strings: unknown, tenantId: string) => {
+        setConfigCalls.push(tenantId)
+        return Promise.resolve(1)
+      }),
+      tenant: { create: vi.fn((args: { data: { id: string } }) => Promise.resolve(args.data)) },
+      site: { create: vi.fn().mockResolvedValue({}) },
+      user: { create: vi.fn().mockResolvedValue({ id: 'user-1', email: TEMP_EMAIL }) },
+      membership: { create: vi.fn().mockResolvedValue({}) },
+      signupRequest: { update: vi.fn().mockResolvedValue({}) },
+    }
+    mockPrisma = {
+      client: {
+        signupRequest: {
+          findUnique: vi.fn().mockResolvedValue(null),
+          findFirst: vi.fn().mockResolvedValue({
+            id: 'signup-1',
+            status: 'approved',
+            schoolName: 'Ecole Test',
+            contactName: 'Directeur',
+            country: 'CM',
+            phone: '+237670000000',
+            tempEmail: TEMP_EMAIL,
+            tempCodeHash: codeHash,
+          }),
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        $transaction: vi.fn((fn: any) => fn(tx)),
+      },
+      __tx: tx,
+    }
+    service = new SetupService(mockPrisma, {
+      hashPassword: vi.fn().mockResolvedValue('hashed'),
+      issueTokens: vi.fn().mockResolvedValue({ accessToken: 'a', refreshToken: 'r' }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any)
+  })
+
+  it('creates the tenant inside a matching RLS context', async () => {
+    await service.loginSchool(null, TEMP_EMAIL, CODE)
+
+    const created = mockPrisma.__tx.tenant.create.mock.calls[0][0].data
+    // The tenant policy checks the new row's own id against app.tenant_id, so
+    // the context must name the very tenant being inserted.
+    expect(setConfigCalls).toEqual([created.id])
+    expect(created.id).toMatch(/^[0-9a-f-]{36}$/)
+  })
+
+  it('opens the context before the first insert', async () => {
+    await service.loginSchool(null, TEMP_EMAIL, CODE)
+
+    const setConfigOrder = mockPrisma.__tx.$executeRaw.mock.invocationCallOrder[0]
+    const tenantOrder = mockPrisma.__tx.tenant.create.mock.invocationCallOrder[0]
+    expect(setConfigOrder).toBeLessThan(tenantOrder)
+  })
+})
+
 describe('SetupService.loginSchool', () => {
   let setupService: SetupService
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common'
+import { randomUUID } from 'node:crypto'
 import argon2 from 'argon2'
+import { withTenant } from '@fineduc/db'
 import { PrismaService } from '../platform/prisma.service.js'
 import { AuthService } from './auth.service.js'
 import type { SignupRequestListItem, ApproveSignupResponse, OnboardingStep } from '@fineduc/contracts'
@@ -238,9 +240,17 @@ export class SetupService {
     if (signup.tempEmail?.toLowerCase() !== address) throw wrong
     if (!(await argon2.verify(signup.tempCodeHash, code))) throw wrong
 
-    const result = await this.prisma.client.$transaction(async (tx) => {
+    // tenant, site and membership are RLS-scoped, and the policy on tenant
+    // checks the new row's own id against app.tenant_id. So the id is minted
+    // here and the context opened around the insert that creates it — without
+    // that, the first write of a school's life is denied by its own isolation
+    // policy and the school cannot sign in at all.
+    const tenantId = randomUUID()
+
+    const result = await withTenant(this.prisma.client, tenantId, async (tx) => {
       const tenant = await tx.tenant.create({
         data: {
+          id: tenantId,
           name: signup.schoolName,
           country: signup.country,
           currency: currencyForCountry(signup.country),
@@ -353,9 +363,14 @@ export class SetupService {
 
     const passwordHash = await this.auth.hashPassword(password)
 
-    const result = await this.prisma.client.$transaction(async (tx) => {
+    // Same RLS requirement as loginSchool: mint the id, then open the context
+    // around the insert that creates the row it names.
+    const tenantId = randomUUID()
+
+    const result = await withTenant(this.prisma.client, tenantId, async (tx) => {
       const tenant = await tx.tenant.create({
         data: {
+          id: tenantId,
           name: signup.schoolName,
           country: signup.country,
           currency: currencyForCountry(signup.country),
