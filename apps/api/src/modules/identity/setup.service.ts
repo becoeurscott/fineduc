@@ -186,12 +186,19 @@ export class SetupService {
   }
 
   /**
-   * Signs a school in with its temporary e-mail and access code.
+   * Signs a school in with its e-mail and access code.
    *
    * `setupToken` is present when the school arrives through the WhatsApp link
-   * and absent when it types the e-mail at /login. Both paths end up on the
-   * same signup row, so the token only narrows the lookup — the e-mail and the
-   * code are what actually authenticate.
+   * and absent when it types the e-mail at /login.
+   *
+   * Which row holds the credentials depends on whether the school has signed in
+   * before. Until it has, only the signup request exists and the temporary
+   * e-mail is the only address that works. Once provisioned, the user row is
+   * the identity: the access code was stored as its password, so the code keeps
+   * working after onboarding swaps the temporary e-mail for the school's real
+   * one — the address it types from then on. Authenticating a provisioned
+   * school against the signup row instead would lock it out the moment it
+   * finished onboarding.
    */
   async loginSchool(setupToken: string | null, email: string, code: string): Promise<{
     accessToken: string
@@ -199,36 +206,25 @@ export class SetupService {
     expiresIn: number
     needsOnboarding: boolean
   }> {
-    const signup = setupToken
-      ? await this.prisma.client.signupRequest.findUnique({ where: { setupToken } })
-      : await this.prisma.client.signupRequest.findFirst({
-          where: { tempEmail: { equals: email, mode: 'insensitive' } },
-          orderBy: { approvedAt: 'desc' },
-        })
+    const address = email.toLowerCase().trim()
 
     // One message for every failure below: a school that mistypes its e-mail
     // must not be able to tell it apart from one that mistypes the code.
     const wrong = new SetupError('INVALID_CREDENTIALS', 'E-mail ou code incorrect')
 
-    if (!signup?.tempCodeHash) throw wrong
-    if (signup.status !== 'approved' && signup.status !== 'setup_complete') throw wrong
-    if (signup.tempEmail?.toLowerCase() !== email.toLowerCase()) throw wrong
+    const signup = setupToken
+      ? await this.prisma.client.signupRequest.findUnique({ where: { setupToken } })
+      : await this.prisma.client.signupRequest.findFirst({
+          where: { tempEmail: { equals: address, mode: 'insensitive' } },
+          orderBy: { approvedAt: 'desc' },
+        })
 
-    const codeValid = await argon2.verify(signup.tempCodeHash, code)
-    if (!codeValid) throw wrong
-
-    if (signup.status === 'setup_complete') {
-      const user = await this.prisma.client.user.findUnique({
-        where: { email: signup.tempEmail! },
-        include: { memberships: { where: { status: 'active' } } },
-      })
-      if (!user || !user.memberships[0]) {
-        throw new SetupError('INVALID_CREDENTIALS', 'Account not found')
-      }
-      const m = user.memberships[0]
-      const tokens = await this.auth.issueTokens(user.id, user.email, m.tenantId, m.role)
-      return { ...tokens, expiresIn: ACCESS_TOKEN_EXPIRY_SECONDS, needsOnboarding: false }
+    if (!signup || signup.status !== 'approved' || !signup.tempCodeHash) {
+      return await this.loginProvisionedSchool(address, code, wrong)
     }
+
+    if (signup.tempEmail?.toLowerCase() !== address) throw wrong
+    if (!(await argon2.verify(signup.tempCodeHash, code))) throw wrong
 
     const result = await this.prisma.client.$transaction(async (tx) => {
       const tenant = await tx.tenant.create({
@@ -293,6 +289,30 @@ export class SetupService {
     this.logger.log(`School "${signup.schoolName}" signed in for the first time`)
 
     return { ...tokens, expiresIn: ACCESS_TOKEN_EXPIRY_SECONDS, needsOnboarding: true }
+  }
+
+  /**
+   * Signs in a school whose tenant already exists, against the address it holds
+   * now rather than the temporary one it was issued. A school that stopped
+   * partway through onboarding is sent back to finish it.
+   */
+  private async loginProvisionedSchool(address: string, code: string, wrong: SetupError) {
+    const user = await this.prisma.client.user.findFirst({
+      where: { email: { equals: address, mode: 'insensitive' }, status: 'active' },
+      include: { memberships: { where: { status: 'active' } } },
+    })
+
+    const membership = user?.memberships[0]
+    if (!user?.passwordHash || !membership) throw wrong
+    if (!(await argon2.verify(user.passwordHash, code))) throw wrong
+
+    const tokens = await this.auth.issueTokens(user.id, user.email, membership.tenantId, membership.role)
+
+    return {
+      ...tokens,
+      expiresIn: ACCESS_TOKEN_EXPIRY_SECONDS,
+      needsOnboarding: user.email.endsWith('@fineduc.school'),
+    }
   }
 
   async getSetupInfo(token: string) {
