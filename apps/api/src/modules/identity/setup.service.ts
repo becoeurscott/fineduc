@@ -185,7 +185,7 @@ export class SetupService {
     this.logger.log(`Rejected signup "${signup.schoolName}" — reason: ${reason}`)
   }
 
-  async loginSchool(setupToken: string, code: string): Promise<{
+  async loginSchool(setupToken: string, email: string, code: string): Promise<{
     accessToken: string
     refreshToken: string
     expiresIn: number
@@ -201,9 +201,13 @@ export class SetupService {
       throw new SetupError('INVALID_CREDENTIALS', 'Ce lien est invalide ou a expiré')
     }
 
+    if (signup.tempEmail?.toLowerCase() !== email.toLowerCase()) {
+      throw new SetupError('INVALID_CREDENTIALS', 'E-mail ou code incorrect')
+    }
+
     const codeValid = await argon2.verify(signup.tempCodeHash!, code)
     if (!codeValid) {
-      throw new SetupError('INVALID_CREDENTIALS', 'Invalid email or access code')
+      throw new SetupError('INVALID_CREDENTIALS', 'E-mail ou code incorrect')
     }
 
     if (signup.status === 'setup_complete') {

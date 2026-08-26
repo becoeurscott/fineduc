@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth'
 
-type Step = 'loading' | 'code' | 'expired' | 'sending'
+type Step = 'loading' | 'email' | 'code' | 'expired' | 'sending'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3010'
 
@@ -22,13 +22,9 @@ export default function FirstLoginPage() {
 
   const [step, setStep] = useState<Step>('loading')
   const [info, setInfo] = useState<SetupInfo | null>(null)
+  const [email, setEmail] = useState('')
   const [code, setCode] = useState('')
   const [error, setError] = useState('')
-
-  if (isAuthenticated) {
-    router.replace('/')
-    return null
-  }
 
   const loadInfo = useCallback(async () => {
     try {
@@ -39,16 +35,30 @@ export default function FirstLoginPage() {
       }
       const data = (await res.json()) as SetupInfo
       setInfo(data)
-      setStep('code')
+      setStep('email')
     } catch {
       setStep('expired')
     }
   }, [token])
 
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => {
     void loadInfo()
   }, [loadInfo])
+
+  if (isAuthenticated) {
+    router.replace('/')
+    return null
+  }
+
+  function handleEmailNext(e: React.FormEvent) {
+    e.preventDefault()
+    setError('')
+    if (!email.trim()) {
+      setError('Veuillez entrer votre e-mail temporaire.')
+      return
+    }
+    setStep('code')
+  }
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -59,7 +69,7 @@ export default function FirstLoginPage() {
       const res = await fetch(`${API_URL}/auth/login-school`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ token, code }),
+        body: JSON.stringify({ token, code, email }),
       })
 
       if (!res.ok) {
@@ -96,28 +106,60 @@ export default function FirstLoginPage() {
 
         {step === 'expired' && (
           <div className="flex flex-col items-center gap-4 py-8">
-            <p className="text-sm text-danger">Ce lien est invalide ou a expir&eacute;.</p>
+            <p className="text-sm text-danger">Ce lien est invalide ou a expiré.</p>
             <p className="text-xs text-slate">
-              Si vous avez d&eacute;j&agrave; configur&eacute; votre compte, connectez-vous avec votre e-mail et mot de passe.
+              Si vous avez déjà configuré votre compte, connectez-vous avec votre e-mail et mot de passe.
             </p>
-            <a
-              href="/login"
-              className="text-sm font-medium text-ink underline"
-            >
+            <a href="/login" className="text-sm font-medium text-ink underline">
               Se connecter
             </a>
           </div>
         )}
 
-        {step === 'code' && info && (
-          <form onSubmit={(e) => void handleLogin(e)} className="flex flex-col gap-4">
+        {step === 'email' && info && (
+          <form onSubmit={handleEmailNext} className="flex flex-col gap-4">
             <div className="rounded-lg border border-accent/30 bg-accent/5 p-3">
               <p className="text-sm font-medium text-ink">{info.schoolName}</p>
               <p className="mt-0.5 text-xs text-slate">{info.contactName} &middot; {info.tempIdentifier}</p>
             </div>
 
             <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium text-ink">Code d&apos;acc&egrave;s</span>
+              <span className="text-sm font-medium text-ink">E-mail temporaire</span>
+              <input
+                type="email"
+                required
+                autoFocus
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="fin-2026-001@fineduc.school"
+                className="h-11 rounded-[var(--radius-control)] border border-line bg-surface px-3 text-sm text-ink placeholder:text-slate/50 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+              />
+              <span className="text-xs text-slate">
+                L&apos;e-mail temporaire reçu par WhatsApp lors de la validation.
+              </span>
+            </label>
+
+            {error && <p className="text-sm text-danger">{error}</p>}
+
+            <button
+              type="submit"
+              className="mt-2 h-11 rounded-[var(--radius-control)] bg-ink text-sm font-semibold text-white transition-colors hover:bg-ink/90"
+            >
+              Suivant
+            </button>
+          </form>
+        )}
+
+        {step === 'code' && info && (
+          <form onSubmit={(e) => void handleLogin(e)} className="flex flex-col gap-4">
+            <div className="rounded-lg border border-accent/30 bg-accent/5 p-3">
+              <p className="text-sm font-medium text-ink">{info.schoolName}</p>
+              <p className="mt-0.5 text-xs text-slate">{email}</p>
+            </div>
+
+            <label className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium text-ink">Code d&apos;accès</span>
               <input
                 type="text"
                 required
@@ -129,18 +171,27 @@ export default function FirstLoginPage() {
                 className="h-11 rounded-[var(--radius-control)] border border-line bg-surface px-3 font-mono text-sm tracking-wider text-ink placeholder:text-slate/50 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
               />
               <span className="text-xs text-slate">
-                Le code re&ccedil;u par WhatsApp lors de la validation de votre inscription.
+                Le code reçu par WhatsApp lors de la validation de votre inscription.
               </span>
             </label>
 
             {error && <p className="text-sm text-danger">{error}</p>}
 
-            <button
-              type="submit"
-              className="mt-2 h-11 rounded-[var(--radius-control)] bg-ink text-sm font-semibold text-white transition-colors hover:bg-ink/90"
-            >
-              Se connecter
-            </button>
+            <div className="mt-2 flex gap-2">
+              <button
+                type="button"
+                onClick={() => { setStep('email'); setError(''); setCode('') }}
+                className="h-11 flex-1 rounded-[var(--radius-control)] border border-line text-sm font-medium text-slate transition-colors hover:border-ink hover:text-ink"
+              >
+                Retour
+              </button>
+              <button
+                type="submit"
+                className="h-11 flex-1 rounded-[var(--radius-control)] bg-ink text-sm font-semibold text-white transition-colors hover:bg-ink/90"
+              >
+                Se connecter
+              </button>
+            </div>
           </form>
         )}
 

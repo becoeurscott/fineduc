@@ -244,6 +244,16 @@ export default function SignupsPage() {
             </span>
             <span className="font-mono text-xs font-semibold text-ink">{req.tempIdentifier}</span>
             <span className="font-mono text-[10px] text-slate">{req.tempEmail}</span>
+            {req.setupToken && (
+              <a
+                href={`https://fineduc-dashboard.vercel.app/first-login/${req.setupToken}`}
+                target="_blank"
+                rel="noreferrer"
+                className="break-all text-[10px] text-accent underline"
+              >
+                {t('signups.loginLink')}
+              </a>
+            )}
             <button
               type="button"
               disabled={acting === req.id}
@@ -275,6 +285,12 @@ export default function SignupsPage() {
             <div>
               <dt className="text-[10px] text-slate">{t('signups.tempCode')}</dt>
               <dd className="font-mono text-sm font-bold tracking-wider text-ink">{creds.tempCode}</dd>
+            </div>
+            <div>
+              <dt className="text-[10px] text-slate">{t('signups.loginLink')}</dt>
+              <dd className="break-all text-[10px] text-accent underline">
+                <a href={creds.loginUrl} target="_blank" rel="noreferrer">{creds.loginUrl}</a>
+              </dd>
             </div>
           </dl>
 
