@@ -15,6 +15,9 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 const TOKEN_KEY = 'fineduc_access_token'
 const REFRESH_KEY = 'fineduc_refresh_token'
 
+/** Reachable without a session: both sign-in pages and the flows that lead to one. */
+const PUBLIC_PREFIXES = ['/login', '/personnel', '/first-login', '/setup', '/onboarding']
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null)
   const [hydrated, setHydrated] = useState(false)
@@ -28,7 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!hydrated) return
-    if (!token && pathname !== '/login' && !pathname.startsWith('/first-login') && !pathname.startsWith('/setup') && !pathname.startsWith('/onboarding')) {
+    if (!token && !PUBLIC_PREFIXES.some((p) => pathname.startsWith(p))) {
       router.replace('/login')
     }
   }, [hydrated, token, pathname, router])

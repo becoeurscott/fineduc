@@ -99,6 +99,12 @@ export default function LoginPage() {
             <p className="mt-1 text-center text-xs text-slate">
               Utilisez l&apos;e-mail et le code re&ccedil;us par WhatsApp.
             </p>
+            <p className="text-center text-xs text-slate">
+              Membre du personnel ?{' '}
+              <a href="/personnel" className="underline">
+                Connexion personnel
+              </a>
+            </p>
           </form>
         )}
 
