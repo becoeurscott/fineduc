@@ -4,14 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth'
 
-type Step = 'credentials' | 'select-tenant' | 'sending'
-
-interface Membership {
-  id: string
-  tenantId: string
-  tenantName: string
-  role: string
-}
+type Step = 'email' | 'code' | 'sending'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3010'
 
@@ -19,16 +12,20 @@ export default function LoginPage() {
   const { login, isAuthenticated } = useAuth()
   const router = useRouter()
 
-  const [step, setStep] = useState<Step>('credentials')
+  const [step, setStep] = useState<Step>('email')
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [code, setCode] = useState('')
   const [error, setError] = useState('')
-  const [memberships, setMemberships] = useState<Membership[]>([])
-  const [selectionToken, setSelectionToken] = useState('')
 
   if (isAuthenticated) {
     router.replace('/')
     return null
+  }
+
+  function handleEmailNext(e: React.FormEvent) {
+    e.preventDefault()
+    setError('')
+    setStep('code')
   }
 
   async function handleLogin(e: React.FormEvent) {
@@ -37,77 +34,29 @@ export default function LoginPage() {
     setStep('sending')
 
     try {
-      const res = await fetch(`${API_URL}/auth/login`, {
+      const res = await fetch(`${API_URL}/auth/login-school`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, code }),
       })
 
       if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as { detail?: string; title?: string } | null
-        setError(body?.detail ?? body?.title ?? 'Identifiants incorrects')
-        setStep('credentials')
+        const body = (await res.json().catch(() => null)) as { detail?: string; message?: string } | null
+        setError(body?.detail ?? body?.message ?? 'E-mail ou code incorrect')
+        setStep('code')
         return
       }
 
       const data = (await res.json()) as {
-        accessToken?: string
-        refreshToken?: string
-        selectionToken?: string
-        memberships?: Membership[]
-        totpRequired?: boolean
+        accessToken: string
+        refreshToken: string
+        needsOnboarding?: boolean
       }
-
-      if (data.accessToken && data.refreshToken) {
-        login(data.accessToken, data.refreshToken)
-        router.replace('/')
-        return
-      }
-
-      if (data.selectionToken && data.memberships) {
-        setSelectionToken(data.selectionToken)
-        setMemberships(data.memberships)
-        setStep('select-tenant')
-        return
-      }
-
-      if (data.totpRequired) {
-        setError('2FA non supporté dans cette version.')
-        setStep('credentials')
-        return
-      }
-
-      setError('Réponse inattendue du serveur.')
-      setStep('credentials')
-    } catch {
-      setError('Impossible de joindre le serveur.')
-      setStep('credentials')
-    }
-  }
-
-  async function handleSelectTenant(tenantId: string) {
-    setError('')
-    setStep('sending')
-
-    try {
-      const res = await fetch(`${API_URL}/auth/select-tenant`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ selectionToken, tenantId }),
-      })
-
-      if (!res.ok) {
-        setError('Sélection échouée.')
-        setStep('select-tenant')
-        return
-      }
-
-      const data = (await res.json()) as { accessToken: string; refreshToken: string }
       login(data.accessToken, data.refreshToken)
-      router.replace('/')
+      router.replace(data.needsOnboarding ? '/onboarding' : '/')
     } catch {
       setError('Impossible de joindre le serveur.')
-      setStep('select-tenant')
+      setStep('code')
     }
   }
 
@@ -122,8 +71,8 @@ export default function LoginPage() {
           <p className="mt-1 text-sm text-slate">Tableau de bord</p>
         </div>
 
-        {step === 'credentials' && (
-          <form onSubmit={(e) => void handleLogin(e)} className="flex flex-col gap-4">
+        {step === 'email' && (
+          <form onSubmit={handleEmailNext} className="flex flex-col gap-4">
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium text-ink">Adresse e-mail</span>
               <input
@@ -133,19 +82,7 @@ export default function LoginPage() {
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="directeur@ecole.com"
-                className="h-11 rounded-[var(--radius-control)] border border-line bg-surface px-3 text-sm text-ink placeholder:text-slate/50 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
-              />
-            </label>
-
-            <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium text-ink">Mot de passe</span>
-              <input
-                type="password"
-                required
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                placeholder="fin-2026-001@fineduc.school"
                 className="h-11 rounded-[var(--radius-control)] border border-line bg-surface px-3 text-sm text-ink placeholder:text-slate/50 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
               />
             </label>
@@ -156,43 +93,53 @@ export default function LoginPage() {
               type="submit"
               className="mt-2 h-11 rounded-[var(--radius-control)] bg-ink text-sm font-semibold text-white transition-colors hover:bg-ink/90"
             >
-              Se connecter
+              Suivant
             </button>
 
             <p className="mt-1 text-center text-xs text-slate">
-              Premi&egrave;re connexion ? Utilisez le lien re&ccedil;u par WhatsApp.
+              Utilisez l&apos;e-mail et le code re&ccedil;us par WhatsApp.
             </p>
           </form>
         )}
 
-        {step === 'select-tenant' && (
-          <div className="flex flex-col gap-3">
-            <p className="text-center text-sm text-slate">Choisissez votre &eacute;cole</p>
-            {memberships.map((m) => (
-              <button
-                key={m.tenantId}
-                type="button"
-                onClick={() => void handleSelectTenant(m.tenantId)}
-                className="flex h-14 items-center gap-3 rounded-[var(--radius-control)] border border-line bg-surface px-4 text-left transition-colors hover:border-accent"
-              >
-                <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-ink text-xs font-bold text-white">
-                  {m.tenantName.charAt(0).toUpperCase()}
-                </span>
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-ink">{m.tenantName}</p>
-                  <p className="truncate text-xs text-slate">{m.role}</p>
-                </div>
-              </button>
-            ))}
+        {step === 'code' && (
+          <form onSubmit={(e) => void handleLogin(e)} className="flex flex-col gap-4">
+            <div className="rounded-lg border border-line bg-surface px-3 py-2">
+              <p className="truncate text-sm text-ink">{email}</p>
+            </div>
+
+            <label className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium text-ink">Code d&apos;acc&egrave;s</span>
+              <input
+                type="text"
+                required
+                autoFocus
+                autoComplete="one-time-code"
+                value={code}
+                onChange={(e) => setCode(e.target.value.toUpperCase())}
+                placeholder="XXXX-XXXX-XXXX"
+                className="h-11 rounded-[var(--radius-control)] border border-line bg-surface px-3 font-mono text-sm tracking-wider text-ink placeholder:text-slate/50 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+              />
+            </label>
+
             {error && <p className="text-sm text-danger">{error}</p>}
-            <button
-              type="button"
-              onClick={() => { setStep('credentials'); setError('') }}
-              className="mt-2 text-sm text-slate underline"
-            >
-              Retour
-            </button>
-          </div>
+
+            <div className="mt-2 flex gap-2">
+              <button
+                type="button"
+                onClick={() => { setStep('email'); setError(''); setCode('') }}
+                className="h-11 flex-1 rounded-[var(--radius-control)] border border-line text-sm font-medium text-slate transition-colors hover:border-ink hover:text-ink"
+              >
+                Retour
+              </button>
+              <button
+                type="submit"
+                className="h-11 flex-1 rounded-[var(--radius-control)] bg-ink text-sm font-semibold text-white transition-colors hover:bg-ink/90"
+              >
+                Se connecter
+              </button>
+            </div>
+          </form>
         )}
 
         {step === 'sending' && (

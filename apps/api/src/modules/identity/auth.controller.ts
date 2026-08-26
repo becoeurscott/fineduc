@@ -53,7 +53,7 @@ export class AuthController {
   async loginSchool(@Body() body: unknown) {
     const input = SchoolLoginRequestSchema.parse(body)
     try {
-      return await this.setupService.loginSchool(input.token, input.email, input.code)
+      return await this.setupService.loginSchool(input.token ?? null, input.email, input.code)
     } catch (err) {
       if (err instanceof SetupError) {
         throw new HttpException(

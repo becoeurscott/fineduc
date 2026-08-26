@@ -54,8 +54,12 @@ export type LoginResponse = z.infer<typeof LoginResponseSchema>
 // School login (temp email + access code)
 // ---------------------------------------------------------------------------
 
+/**
+ * `token` is only present when the school arrives through its WhatsApp link.
+ * At /login it types the e-mail instead, so the token is optional.
+ */
 export const SchoolLoginRequestSchema = z.object({
-  token: z.string().min(1),
+  token: z.string().min(1).optional(),
   email: z.string().email('Invalid email'),
   code: z.string().min(1, 'Access code is required'),
 })

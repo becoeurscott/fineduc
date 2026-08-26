@@ -185,30 +185,37 @@ export class SetupService {
     this.logger.log(`Rejected signup "${signup.schoolName}" — reason: ${reason}`)
   }
 
-  async loginSchool(setupToken: string, email: string, code: string): Promise<{
+  /**
+   * Signs a school in with its temporary e-mail and access code.
+   *
+   * `setupToken` is present when the school arrives through the WhatsApp link
+   * and absent when it types the e-mail at /login. Both paths end up on the
+   * same signup row, so the token only narrows the lookup — the e-mail and the
+   * code are what actually authenticate.
+   */
+  async loginSchool(setupToken: string | null, email: string, code: string): Promise<{
     accessToken: string
     refreshToken: string
     expiresIn: number
     needsOnboarding: boolean
   }> {
-    const signup = await this.prisma.client.signupRequest.findUnique({
-      where: { setupToken },
-    })
-    if (!signup || !signup.tempCodeHash) {
-      throw new SetupError('INVALID_CREDENTIALS', 'Ce lien est invalide ou a expiré')
-    }
-    if (signup.status !== 'approved' && signup.status !== 'setup_complete') {
-      throw new SetupError('INVALID_CREDENTIALS', 'Ce lien est invalide ou a expiré')
-    }
+    const signup = setupToken
+      ? await this.prisma.client.signupRequest.findUnique({ where: { setupToken } })
+      : await this.prisma.client.signupRequest.findFirst({
+          where: { tempEmail: { equals: email, mode: 'insensitive' } },
+          orderBy: { approvedAt: 'desc' },
+        })
 
-    if (signup.tempEmail?.toLowerCase() !== email.toLowerCase()) {
-      throw new SetupError('INVALID_CREDENTIALS', 'E-mail ou code incorrect')
-    }
+    // One message for every failure below: a school that mistypes its e-mail
+    // must not be able to tell it apart from one that mistypes the code.
+    const wrong = new SetupError('INVALID_CREDENTIALS', 'E-mail ou code incorrect')
 
-    const codeValid = await argon2.verify(signup.tempCodeHash!, code)
-    if (!codeValid) {
-      throw new SetupError('INVALID_CREDENTIALS', 'E-mail ou code incorrect')
-    }
+    if (!signup?.tempCodeHash) throw wrong
+    if (signup.status !== 'approved' && signup.status !== 'setup_complete') throw wrong
+    if (signup.tempEmail?.toLowerCase() !== email.toLowerCase()) throw wrong
+
+    const codeValid = await argon2.verify(signup.tempCodeHash, code)
+    if (!codeValid) throw wrong
 
     if (signup.status === 'setup_complete') {
       const user = await this.prisma.client.user.findUnique({

@@ -108,7 +108,7 @@ export default function FirstLoginPage() {
           <div className="flex flex-col items-center gap-4 py-8">
             <p className="text-sm text-danger">Ce lien est invalide ou a expiré.</p>
             <p className="text-xs text-slate">
-              Si vous avez déjà configuré votre compte, connectez-vous avec votre e-mail et mot de passe.
+              Connectez-vous avec l&apos;e-mail et le code reçus par WhatsApp.
             </p>
             <a href="/login" className="text-sm font-medium text-ink underline">
               Se connecter
