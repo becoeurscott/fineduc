@@ -6,6 +6,53 @@ const CODE = 'ABCD-EFGH-JKMN'
 const TEMP_EMAIL = 'fin-2026-001@fineduc.school'
 const REAL_EMAIL = 'directeur@ecole-test.com'
 
+describe('SetupService.approveSignup', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mockPrisma: any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mockAuth: any
+  let service: SetupService
+
+  beforeEach(() => {
+    mockPrisma = {
+      client: {
+        signupRequest: {
+          findUnique: vi.fn().mockResolvedValue({
+            id: 'signup-1',
+            status: 'pending',
+            schoolName: 'Ecole Test',
+            setupToken: null,
+          }),
+          update: vi.fn().mockResolvedValue({}),
+        },
+        $queryRaw: vi.fn().mockResolvedValue([{ nextval: 7n }]),
+      },
+    }
+    mockAuth = { hashPassword: vi.fn().mockResolvedValue('hashed') }
+    service = new SetupService(mockPrisma, mockAuth)
+  })
+
+  it('issues a setup token so the first-login link resolves', async () => {
+    const result = await service.approveSignup('signup-1')
+
+    // The regression: the link read the token off the row before it was
+    // written, so every approval produced /first-login/null.
+    expect(result.loginUrl).not.toContain('/null')
+    expect(result.loginUrl).toMatch(/\/first-login\/[0-9a-f]{64}$/)
+  })
+
+  it('persists that token on the signup request', async () => {
+    const result = await service.approveSignup('signup-1')
+    const token = result.loginUrl.split('/').pop()
+
+    expect(mockPrisma.client.signupRequest.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ setupToken: token }),
+      }),
+    )
+  })
+})
+
 describe('SetupService.loginSchool', () => {
   let setupService: SetupService
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

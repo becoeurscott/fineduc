@@ -114,6 +114,7 @@ export class SetupService {
     const tempIdentifier = `FIN-${year}-${serial}`
     const tempEmail = `fin-${year}-${serial}@fineduc.school`
     const tempCode = this.generateAccessCode()
+    const setupToken = signup.setupToken ?? this.generateSetupToken()
 
     await this.prisma.client.signupRequest.update({
       where: { id: signupId },
@@ -122,13 +123,14 @@ export class SetupService {
         approvedAt: new Date(),
         tempIdentifier,
         tempEmail,
+        setupToken,
         tempCodeHash: await this.auth.hashPassword(tempCode),
       },
     })
 
     this.logger.log(`Approved "${signup.schoolName}" as ${tempIdentifier}`)
 
-    return { tempIdentifier, tempEmail, tempCode, loginUrl: this.loginUrl(signup.setupToken!) }
+    return { tempIdentifier, tempEmail, tempCode, loginUrl: this.loginUrl(setupToken) }
   }
 
   /**
@@ -147,9 +149,12 @@ export class SetupService {
     }
 
     const tempCode = this.generateAccessCode()
+    // Backfills the token for schools approved before approval issued one.
+    const setupToken = signup.setupToken ?? this.generateSetupToken()
+
     await this.prisma.client.signupRequest.update({
       where: { id: signupId },
-      data: { tempCodeHash: await this.auth.hashPassword(tempCode) },
+      data: { setupToken, tempCodeHash: await this.auth.hashPassword(tempCode) },
     })
 
     this.logger.log(`Reissued access code for ${signup.tempIdentifier}`)
@@ -158,8 +163,15 @@ export class SetupService {
       tempIdentifier: signup.tempIdentifier,
       tempEmail: signup.tempEmail,
       tempCode,
-      loginUrl: this.loginUrl(signup.setupToken!),
+      loginUrl: this.loginUrl(setupToken),
     }
+  }
+
+  /** Unguessable path segment for the school's first-login link. */
+  private generateSetupToken(): string {
+    const bytes = new Uint8Array(32)
+    crypto.getRandomValues(bytes)
+    return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')
   }
 
   private loginUrl(setupToken: string): string {
