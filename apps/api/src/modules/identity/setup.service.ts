@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { randomUUID } from 'node:crypto'
 import argon2 from 'argon2'
-import { withTenant } from '@fineduc/db'
+import { withTenant, withUser } from '@fineduc/db'
 import { PrismaService } from '../platform/prisma.service.js'
 import { AuthService } from './auth.service.js'
 import type { SignupRequestListItem, ApproveSignupResponse, OnboardingStep } from '@fineduc/contracts'
@@ -319,13 +319,19 @@ export class SetupService {
    * partway through onboarding is sent back to finish it.
    */
   private async loginProvisionedSchool(address: string, code: string, wrong: SetupError) {
+    // user carries no RLS, but membership does — and the tenant is not known
+    // until that row is read, so the read is scoped to this user instead.
     const user = await this.prisma.client.user.findFirst({
       where: { email: { equals: address, mode: 'insensitive' }, status: 'active' },
-      include: { memberships: { where: { status: 'active' } } },
     })
+    if (!user?.passwordHash) throw wrong
 
-    const membership = user?.memberships[0]
-    if (!user?.passwordHash || !membership) throw wrong
+    const memberships = await withUser(this.prisma.client, user.id, (tx) =>
+      tx.membership.findMany({ where: { userId: user.id, status: 'active' } }),
+    )
+
+    const membership = memberships[0]
+    if (!membership) throw wrong
     if (!(await argon2.verify(user.passwordHash, code))) throw wrong
 
     const tokens = await this.auth.issueTokens(user.id, user.email, membership.tenantId, membership.role)

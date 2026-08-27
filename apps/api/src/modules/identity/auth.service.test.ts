@@ -7,6 +7,8 @@ describe('AuthService', () => {
   let authService: AuthService
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let mockPrisma: any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let membershipRows: any[]
 
   beforeAll(() => {
     process.env.DATABASE_URL = 'postgresql://user:pass@localhost:5432/fineduc'
@@ -16,6 +18,7 @@ describe('AuthService', () => {
   })
 
   beforeEach(() => {
+    membershipRows = []
     mockPrisma = {
       client: {
         user: {
@@ -27,6 +30,15 @@ describe('AuthService', () => {
         membership: {
           findUnique: vi.fn(),
         },
+        // membership and tenant are both RLS-scoped, so login reads them
+        // through withUser()/withTenant(), each of which opens a transaction.
+        $transaction: vi.fn((fn: (tx: unknown) => unknown) =>
+          fn({
+            $executeRaw: vi.fn().mockResolvedValue(1),
+            membership: { findMany: vi.fn(() => Promise.resolve(membershipRows)) },
+            tenant: { findUnique: vi.fn(() => Promise.resolve({ name: 'Ecole Test' })) },
+          }),
+        ),
         refreshToken: {
           create: vi.fn(),
           findUnique: vi.fn(),
@@ -115,17 +127,17 @@ describe('AuthService', () => {
         totpEnabled: false,
         failedLoginCount: 0,
         lockedUntil: null,
-        memberships: [
-          {
-            id: '33333333-3333-3333-3333-333333333333',
-            tenantId,
-            tenant: { name: 'School A' },
-            siteId: null,
-            role: 'director',
-            status: 'active',
-          },
-        ],
       })
+
+      membershipRows = [
+        {
+          id: '33333333-3333-3333-3333-333333333333',
+          tenantId,
+          siteId: null,
+          role: 'director',
+          status: 'active',
+        },
+      ]
 
       const res = await authService.login('director@fineduc.test', 'secret123')
 

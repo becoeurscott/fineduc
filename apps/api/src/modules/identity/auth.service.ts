@@ -10,6 +10,7 @@ import { Injectable, Logger } from '@nestjs/common'
 import argon2 from 'argon2'
 import jwt from 'jsonwebtoken'
 import { loadEnv } from '@fineduc/config'
+import { withTenant, withUser } from '@fineduc/db'
 import { PrismaService } from '../platform/prisma.service.js'
 import { AuthenticationError } from '@fineduc/domain'
 import type { LoginMembership } from '@fineduc/contracts'
@@ -45,18 +46,40 @@ export class AuthService {
     expiresIn?: number
   }> {
     // User table has no RLS — queried directly.
-    const user = await this.prisma.client.user.findUnique({
+    const found = await this.prisma.client.user.findUnique({
       where: { email: email.toLowerCase().trim() },
-      include: {
-        memberships: {
-          where: { status: 'active' },
-          include: { tenant: { select: { name: true } } },
-        },
-      },
     })
 
-    if (!user) {
+    if (!found) {
       throw new AuthenticationError('INVALID_CREDENTIALS', 'Invalid email or password')
+    }
+
+    // membership IS RLS-scoped, and the tenant is not known yet — picking it is
+    // what login is for. Reading it through an include on the line above
+    // returned nothing, so every sign-in failed with NO_ACTIVE_MEMBERSHIP.
+    // app.user_id scopes the read to this user's own rows instead.
+    const membershipRows = await withUser(this.prisma.client, found.id, (tx) =>
+      tx.membership.findMany({ where: { userId: found.id, status: 'active' } }),
+    )
+
+    // tenant is scoped by app.tenant_id, so its name cannot be joined in above —
+    // the relation would come back null. Each name is read in its own context,
+    // which keeps the reads inside the tenants this user already belongs to.
+    // One extra query per membership, and a user has one in almost every case.
+    const tenantNames = new Map<string, string>()
+    for (const m of membershipRows) {
+      const tenant = await withTenant(this.prisma.client, m.tenantId, (tx) =>
+        tx.tenant.findUnique({ where: { id: m.tenantId }, select: { name: true } }),
+      )
+      tenantNames.set(m.tenantId, tenant?.name ?? '')
+    }
+
+    const user = {
+      ...found,
+      memberships: membershipRows.map((m) => ({
+        ...m,
+        tenant: { name: tenantNames.get(m.tenantId) ?? '' },
+      })),
     }
 
     // Check lockout.

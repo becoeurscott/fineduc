@@ -66,6 +66,31 @@ export async function withTenant<T>(
 }
 
 /**
+ * Run `fn` inside a transaction scoped to a single user's own rows, for the
+ * one question that has to be answered before a tenant is known: which
+ * tenants does this user belong to? Login cannot open a `withTenant` context
+ * because choosing the tenant is what it is trying to do.
+ *
+ * Only `membership` has a policy keyed on `app.user_id`, and only for SELECT,
+ * so this grants strictly the ability to read that user's own memberships.
+ * It is not a general escape hatch: tenant-scoped tables read here still see
+ * zero rows, and writes are still rejected.
+ */
+export async function withUser<T>(
+  prisma: PrismaClient,
+  userId: string,
+  fn: (tx: TenantTransactionClient) => Promise<T>,
+): Promise<T> {
+  if (!UUID_RE.test(userId)) {
+    throw new InvalidTenantIdError(userId)
+  }
+  return prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT set_config('app.user_id', ${userId}, true)`
+    return fn(tx)
+  })
+}
+
+/**
  * Explicit, grep-able escape hatch for the small set of platform tables
  * that carry NO RLS policy by design — `provider_event` and
  * `outbox_event` (see the comments on those models in schema.prisma).

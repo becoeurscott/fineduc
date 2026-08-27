@@ -132,6 +132,9 @@ describe('SetupService.loginSchool', () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let mockAuth: any
   let codeHash: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let membershipRows: any[]
+  let userScopeCalls: string[]
 
   beforeAll(async () => {
     process.env.DATABASE_URL = 'postgresql://user:pass@localhost:5432/fineduc'
@@ -142,6 +145,8 @@ describe('SetupService.loginSchool', () => {
   })
 
   beforeEach(() => {
+    userScopeCalls = []
+    membershipRows = []
     mockPrisma = {
       client: {
         signupRequest: {
@@ -151,6 +156,17 @@ describe('SetupService.loginSchool', () => {
         user: {
           findFirst: vi.fn().mockResolvedValue(null),
         },
+        // withUser() wraps the membership read in a transaction that sets
+        // app.user_id first; the mock records it so the scoping can be asserted.
+        $transaction: vi.fn((fn: (tx: unknown) => unknown) =>
+          fn({
+            $executeRaw: vi.fn((_s: unknown, id: string) => {
+              userScopeCalls.push(id)
+              return Promise.resolve(1)
+            }),
+            membership: { findMany: vi.fn(() => Promise.resolve(membershipRows)) },
+          }),
+        ),
       },
     }
     mockAuth = {
@@ -161,12 +177,12 @@ describe('SetupService.loginSchool', () => {
 
   /** The school has onboarded: its user row carries the real address now. */
   function provisionedUser(email: string) {
+    membershipRows = [{ tenantId: '22222222-2222-2222-2222-222222222222', role: 'director' }]
     return {
       id: '11111111-1111-1111-1111-111111111111',
       email,
       passwordHash: codeHash,
       status: 'active',
-      memberships: [{ tenantId: '22222222-2222-2222-2222-222222222222', role: 'director' }],
     }
   }
 
@@ -185,6 +201,16 @@ describe('SetupService.loginSchool', () => {
     const result = await setupService.loginSchool(null, TEMP_EMAIL, CODE)
 
     expect(result.needsOnboarding).toBe(true)
+  })
+
+  it('reads the memberships scoped to that user', async () => {
+    mockPrisma.client.user.findFirst.mockResolvedValue(provisionedUser(REAL_EMAIL))
+
+    await setupService.loginSchool(null, REAL_EMAIL, CODE)
+
+    // membership is RLS-scoped and the tenant is not known yet, so the read has
+    // to name the user. Without this it returns nothing and login fails.
+    expect(userScopeCalls).toEqual(['11111111-1111-1111-1111-111111111111'])
   })
 
   it('rejects the temporary e-mail once onboarding has replaced it', async () => {
