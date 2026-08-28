@@ -33,3 +33,7 @@ export type { MaterialiseParams, MaterialiseResult } from './messaging/reminder-
 
 export { consoleLogger } from './logger.js'
 export type { Logger } from './logger.js'
+
+/* ------------------------------------------------------- secrets at rest -- */
+
+export { seal, open, sealJson, openJson, encryptionKeyFromHex, SecretBoxError } from './shared/secret-box.js'

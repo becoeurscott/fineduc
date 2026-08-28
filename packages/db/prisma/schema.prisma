@@ -367,6 +367,7 @@ model Tenant {
   sites                Site[]
   memberships          Membership[]
   apiKeys              ApiKey[]
+  paymentConnections   PaymentConnection[]
   academicYears        AcademicYear[]
   termSchedule         Term[]
   gradeLevels          GradeLevel[]
@@ -1477,6 +1478,49 @@ model Subscription {
   tenant Tenant @relation(fields: [tenantId], references: [id])
 
   @@map("subscription")
+}
+
+/// A school's OWN aggregator account (ARCHITECTURE.md §9).
+///
+/// Fineduc never holds a parent's money: the landing page promises the funds
+/// go from the aggregator straight to the school's bank account, and that is
+/// only true if the school collects with ITS OWN credentials. One platform
+/// key set for every school would route every payment into Fineduc's account
+/// and make it a payment institution.
+///
+/// `credentialsSealed` is AES-256-GCM under ENCRYPTION_KEY — a database
+/// snapshot on its own leaks nothing usable. The plaintext is never selected
+/// into any response.
+///
+/// `webhookToken` is `<tenantId>.<secret>`, the same scheme as a pay link,
+/// and it is what the school pastes into its aggregator dashboard. The tenant
+/// has to be resolvable from the URL alone: the callback arrives
+/// unauthenticated and its signature can only be checked against THIS
+/// school's webhook secret, so the tenant must be known before the row can
+/// be read.
+model PaymentConnection {
+  id                String   @id @default(uuid()) @db.Uuid
+  tenantId          String   @map("tenant_id") @db.Uuid
+  /// Aggregator name, matching the adapter's `name` (e.g. "moneroo").
+  provider          String
+  /// AES-256-GCM, `iv:authTag:ciphertext`. Never returned to a client.
+  credentialsSealed String   @map("credentials_sealed")
+  /// Opaque `<tenantId>.<secret>`; the callback URL the school configures.
+  webhookToken      String   @unique @map("webhook_token")
+  /// False parks a connection without deleting the keys the school pasted.
+  isActive          Boolean  @default(true) @map("is_active")
+  /// Set when a callback last verified, for the "is this school live?" view.
+  lastVerifiedAt    DateTime? @map("last_verified_at") @db.Timestamptz(6)
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  /// One account per aggregator per school. Two would make a callback
+  /// ambiguous — there would be no way to know which keys signed it.
+  @@unique([tenantId, provider])
+  @@index([tenantId])
+  @@map("payment_connection")
 }
 
 /// APPEND-ONLY, no delete grant for any application role (AGENTS.md rule #10).
