@@ -28,8 +28,10 @@ export { FakePaymentProvider } from './payment/adapters/fake.js'
 export { ManualPaymentProvider } from './payment/adapters/manual.js'
 export { CinetPayProvider } from './payment/adapters/cinetpay.js'
 export type { CinetPayOptions } from './payment/adapters/cinetpay.js'
+export { MonerooProvider } from './payment/adapters/moneroo.js'
+export type { MonerooOptions } from './payment/adapters/moneroo.js'
 
-export { postJson, DEFAULT_POLICY, HttpTimeoutError } from './http.js'
+export { postJson, getJson, DEFAULT_POLICY, HttpTimeoutError } from './http.js'
 export type { FetchLike, HttpPolicy } from './http.js'
 
 

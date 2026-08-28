@@ -23,6 +23,13 @@ export interface InitiatePaymentRequest {
   readonly operator: PaymentOperator
   readonly payerPhoneE164: string
   readonly payerName?: string
+  /**
+   * Optional because most parents paying by mobile money do not have one.
+   * Some aggregators require an e-mail on the customer object and reject the
+   * request without it; an adapter that needs one derives a placeholder from
+   * the phone number rather than making the field mandatory everywhere.
+   */
+  readonly payerEmail?: string
   readonly description: string
   /**
    * Replayed verbatim on a retry. An adapter MUST pass this to the provider

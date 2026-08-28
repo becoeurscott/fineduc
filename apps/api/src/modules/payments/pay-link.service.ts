@@ -4,7 +4,7 @@ import { withTenant } from '@fineduc/db'
 import { Money, assertCurrencyCode, type CurrencyCode } from '@fineduc/money'
 import { ConflictError, NotFoundError, ValidationError, initialStatus } from '@fineduc/domain'
 import { encodePaymentReference, parsePayLinkToken } from '@fineduc/services'
-import type { PayLinkView, InitiatePayLinkResult, PaymentOperator } from '@fineduc/contracts'
+import { readPaymentSettings, type PayLinkView, type InitiatePayLinkResult, type PaymentOperator } from '@fineduc/contracts'
 import { PaymentProviderRegistry } from './provider.registry.js'
 
 /**
@@ -44,6 +44,14 @@ export class PayLinkService {
     return withTenant(prisma, parsed.tenantId, async (tx) => {
       const link = await this.loadUsableLink(tx, token)
       const currency = await this.currencyOf(tx, parsed.tenantId)
+      const settings = await this.paymentSettingsOf(tx, parsed.tenantId)
+
+      // A school that has not turned online collection on has no aggregator
+      // account to collect INTO. Rendering a payable page anyway would take a
+      // parent's money into the platform's account instead of the school's,
+      // so the link is simply not usable — the same 404 as every other way a
+      // token can be wrong, which is also what keeps this page opaque.
+      if (!settings.enabled) throw new NotFoundError('payment_link', 'token')
 
       const invoice = await tx.invoice.findUnique({ where: { id: link.invoiceId } })
       if (!invoice) throw new NotFoundError('payment_link', 'token')
@@ -77,7 +85,7 @@ export class PayLinkService {
         minAmount: this.money(link.minAmountMinor ?? 0n, currency),
         instalmentLabel: instalment?.label ?? null,
         expiresAt: link.expiresAt.toISOString(),
-        operators: [...OPERATORS],
+        operators: settings.operators.length > 0 ? [...settings.operators] : [...OPERATORS],
       }
     })
   }
@@ -104,6 +112,13 @@ export class PayLinkService {
     const prepared = await withTenant(prisma, parsed.tenantId, async (tx) => {
       const link = await this.loadUsableLink(tx, token)
       const currency = await this.currencyOf(tx, parsed.tenantId)
+      const settings = await this.paymentSettingsOf(tx, parsed.tenantId)
+      // Checked again here, not just in `view`: the page could have been open
+      // since before the school turned collection off.
+      if (!settings.enabled) throw new NotFoundError('payment_link', 'token')
+      if (settings.operators.length > 0 && !settings.operators.includes(params.operator)) {
+        throw new NotFoundError('payment_link', 'token')
+      }
       const amount = Money.of(params.amountMinor, currency)
 
       const replay = await tx.payment.findFirst({
@@ -222,6 +237,17 @@ export class PayLinkService {
 
   private money(amountMinor: bigint, currency: CurrencyCode) {
     return { amountMinor: Money.of(amountMinor, currency).toWireString(), currency }
+  }
+
+  /**
+   * Online collection is opt-in per school. A malformed settings blob reads
+   * as OFF rather than on — the lenient schema's job — because the failure
+   * that matters is taking money a school cannot receive.
+   */
+  private async paymentSettingsOf(tx: TenantTransactionClient, tenantId: string) {
+    const tenant = await tx.tenant.findUnique({ where: { id: tenantId }, select: { settings: true } })
+    if (!tenant) throw new NotFoundError('tenant', tenantId)
+    return readPaymentSettings(tenant.settings)
   }
 
   private async currencyOf(tx: TenantTransactionClient, tenantId: string): Promise<CurrencyCode> {

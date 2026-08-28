@@ -88,6 +88,14 @@ const EnvSchema = z
     CINETPAY_SITE_ID: z.string().default(''),
     CINETPAY_WEBHOOK_SECRET: z.string().default(''),
 
+    /**
+     * Moneroo. The secret key alone is enough to take a payment; without the
+     * webhook secret nothing can SETTLE, so the registry refuses to register
+     * a half-configured provider rather than accept money it cannot confirm.
+     */
+    MONEROO_SECRET_KEY: z.string().default(''),
+    MONEROO_WEBHOOK_SECRET: z.string().default(''),
+
     WHATSAPP_PHONE_NUMBER_ID: z.string().default(''),
     WHATSAPP_ACCESS_TOKEN: z.string().default(''),
     WHATSAPP_WEBHOOK_SECRET: z.string().default(''),
@@ -177,6 +185,8 @@ export const SENSITIVE_ENV_KEYS = [
   'ENCRYPTION_KEY',
   'CINETPAY_API_KEY',
   'CINETPAY_WEBHOOK_SECRET',
+  'MONEROO_SECRET_KEY',
+  'MONEROO_WEBHOOK_SECRET',
   'WHATSAPP_ACCESS_TOKEN',
   'WHATSAPP_WEBHOOK_SECRET',
   'SMS_API_KEY',

@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { loadEnv } from '@fineduc/config'
 import { NotFoundError } from '@fineduc/domain'
-import { FakePaymentProvider, ManualPaymentProvider, type PaymentProvider } from '@fineduc/providers'
+import { FakePaymentProvider, ManualPaymentProvider, MonerooProvider, type PaymentProvider } from '@fineduc/providers'
 
 /**
  * Resolves a provider by the name in the webhook URL.
@@ -29,6 +29,30 @@ export class PaymentProviderRegistry {
     // anyone who guessed the secret a way to fabricate a settlement.
     if (env.NODE_ENV !== 'production') {
       this.register(new FakePaymentProvider({ secret: process.env['FAKE_WEBHOOK_SECRET'] }))
+    }
+
+    /*
+     * Moneroo — the networked provider for mobile money.
+     *
+     * Both halves of the credential are required. A secret key on its own
+     * would let the API take a payment it could never confirm: the webhook
+     * is what settles money, and without the webhook secret every callback
+     * is rejected as forged. Registering that would strand every parent who
+     * paid. Refusing to register means the checkout is plainly unavailable
+     * instead, which is the failure a school can actually see and report.
+     */
+    if (env.MONEROO_SECRET_KEY && env.MONEROO_WEBHOOK_SECRET) {
+      this.register(
+        new MonerooProvider({
+          secretKey: env.MONEROO_SECRET_KEY,
+          webhookSecret: env.MONEROO_WEBHOOK_SECRET,
+          fetch: (url, init) => fetch(url, init),
+        }),
+      )
+    } else if (env.MONEROO_SECRET_KEY) {
+      this.logger.warn(
+        'MONEROO_SECRET_KEY is set but MONEROO_WEBHOOK_SECRET is not. Moneroo is NOT registered — a payment taken now could never be confirmed.',
+      )
     }
 
     // CinetPay and Flutterwave register here once their adapters exist.

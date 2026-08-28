@@ -93,3 +93,56 @@ export async function postJson(
 
   throw lastError instanceof Error ? lastError : new Error(String(lastError))
 }
+
+/**
+ * GET JSON, with the same policy, timeout and retry behaviour as `postJson`.
+ *
+ * Exists because some providers verify a payment over GET rather than POST,
+ * and a re-query on the settlement path must not be the one call in the
+ * system without a timeout — a hung verify would hold a webhook open until
+ * the provider gave up and redelivered it.
+ */
+export async function getJson(
+  url: string,
+  options: RequestOptions & { readonly headers?: Record<string, string> },
+): Promise<{ status: number; body: unknown }> {
+  const policy = options.policy ?? DEFAULT_POLICY
+  const sleep = options.sleep ?? ((ms: number) => new Promise((resolve) => setTimeout(resolve, ms)))
+  const random = options.random ?? Math.random
+
+  let lastError: unknown
+  for (let attempt = 0; attempt < policy.attempts; attempt++) {
+    if (attempt > 0) await sleep(delayFor(attempt - 1, policy.baseDelayMs, random))
+
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), policy.timeoutMs)
+    try {
+      const response = await options.fetch(url, {
+        method: 'GET',
+        headers: { accept: 'application/json', ...options.headers },
+        signal: controller.signal,
+      })
+
+      if (response.status >= 500 && attempt < policy.attempts - 1) {
+        lastError = new Error(`Upstream ${response.status}`)
+        continue
+      }
+
+      const text = await response.text()
+      let parsed: unknown = null
+      try {
+        parsed = text ? JSON.parse(text) : null
+      } catch {
+        parsed = { raw: text }
+      }
+      return { status: response.status, body: parsed }
+    } catch (error) {
+      lastError = controller.signal.aborted ? new HttpTimeoutError(url, policy.timeoutMs) : error
+      if (attempt === policy.attempts - 1) break
+    } finally {
+      clearTimeout(timer)
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error(String(lastError))
+}

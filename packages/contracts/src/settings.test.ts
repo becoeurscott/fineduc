@@ -5,6 +5,11 @@ import {
   TenantMessagingSettingsInputSchema,
 } from './messaging-settings.js'
 import {
+  DEFAULT_PAYMENT_SETTINGS,
+  readPaymentSettings,
+  TenantPaymentSettingsInputSchema,
+} from './payment-settings.js'
+import {
   DEFAULT_MORATORIUM_POLICY,
   MAX_MORATORIUM_DAYS,
   MoratoriumPolicyInputSchema,
@@ -179,5 +184,58 @@ describe('reading the messaging settings', () => {
   it('refuses a tenant daily cap of zero', () => {
     const result = TenantMessagingSettingsInputSchema.safeParse({ ...DEFAULT_MESSAGING_SETTINGS, tenantDailyCap: 0 })
     expect(result.success).toBe(false)
+  })
+})
+
+/**
+ * Online fee collection is optional. The reader runs on the public pay page
+ * for an unauthenticated stranger, so like the others it must never throw —
+ * and a blob it cannot make sense of must read as OFF, because the failure
+ * that matters is taking a parent's money into an account the school does
+ * not own.
+ */
+describe('reading the payment settings', () => {
+  it('falls back to every default for a school that has configured nothing', () => {
+    expect(readPaymentSettings({})).toEqual(DEFAULT_PAYMENT_SETTINGS)
+  })
+
+  it('is off by default — a school opts in', () => {
+    expect(readPaymentSettings({}).enabled).toBe(false)
+  })
+
+  it('reads a school that has turned it on', () => {
+    expect(readPaymentSettings({ payments: { enabled: true, operators: ['mtn'] } })).toEqual({
+      enabled: true,
+      operators: ['mtn'],
+    })
+  })
+
+  it('treats no named operators as "every rail the provider supports"', () => {
+    // Not as "no rails" — that would be a checkout with nothing to click.
+    expect(readPaymentSettings({ payments: { enabled: true } }).operators).toEqual([])
+  })
+
+  it('falls back to off rather than throwing on a malformed blob', () => {
+    for (const blob of [null, 'nonsense', 42, { payments: 'yes' }, { payments: { enabled: 'true' } }]) {
+      expect(() => readPaymentSettings(blob)).not.toThrow()
+      expect(readPaymentSettings(blob).enabled).toBe(false)
+    }
+  })
+
+  it('drops an operator it does not recognise rather than offering it', () => {
+    const settings = readPaymentSettings({ payments: { enabled: true, operators: ['mtn', 'bitcoin'] } })
+    expect(settings.operators).not.toContain('bitcoin')
+  })
+
+  it('refuses a malformed write instead of coercing it', () => {
+    expect(() => TenantPaymentSettingsInputSchema.parse({ enabled: 'yes' })).toThrow()
+    expect(() => TenantPaymentSettingsInputSchema.parse({ enabled: true, operators: ['paypal'] })).toThrow()
+  })
+
+  it('accepts a well-formed write', () => {
+    expect(TenantPaymentSettingsInputSchema.parse({ enabled: true, operators: ['mtn', 'orange'] })).toEqual({
+      enabled: true,
+      operators: ['mtn', 'orange'],
+    })
   })
 })

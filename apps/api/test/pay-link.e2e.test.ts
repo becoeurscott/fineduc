@@ -37,13 +37,25 @@ interface Fixture {
   token: string
 }
 
-async function seed(marker: string, over: { expiresAt?: Date; minAmountMinor?: bigint } = {}): Promise<Fixture> {
+async function seed(
+  marker: string,
+  over: { expiresAt?: Date; minAmountMinor?: bigint; onlinePayments?: boolean } = {},
+): Promise<Fixture> {
   const tenantId = randomUUID()
   const userId = randomUUID()
 
   const base = await withTenant(prisma, tenantId, async (tx: Any) => {
     await tx.tenant.create({
-      data: { id: tenantId, name: `École ${marker}`, country: 'CM', currency: 'XAF', timezone: 'Africa/Douala' },
+      data: {
+        id: tenantId,
+        name: `École ${marker}`,
+        country: 'CM',
+        currency: 'XAF',
+        timezone: 'Africa/Douala',
+        // Online collection is opt-in per school, so a fixture exercising the
+        // pay path has to turn it on the way a real school would.
+        settings: over.onlinePayments === false ? {} : { payments: { enabled: true, operators: [] } },
+      },
     })
     const site = await tx.site.create({ data: { tenantId, name: `S${marker}`, isPrimary: true } })
     const year = await tx.academicYear.create({
@@ -170,6 +182,52 @@ describe('Pay link (real Postgres)', () => {
 
   afterAll(async () => {
     await prisma?.$disconnect()
+  })
+
+  /**
+   * Online fee collection is optional. A school that has not turned it on has
+   * no aggregator account to collect INTO, so a link that still rendered a
+   * payable page would send a parent's money to the platform rather than the
+   * school. The link has to be inert, and inert the same way every other bad
+   * token is — this page tells a prober nothing.
+   */
+  describe('a school that has not enabled online payments', () => {
+    it('does not render a payable page', async () => {
+      const f = await seed('OFF1', { onlinePayments: false })
+      await expect(payLinks.view(prisma, f.token)).rejects.toThrow(/payment_link/)
+    })
+
+    it('refuses to initiate even if the page was already open', async () => {
+      const f = await seed('OFF2', { onlinePayments: false })
+      await expect(
+        payLinks.initiate(prisma, f.token, {
+          amountMinor: 100_000n,
+          operator: 'mtn',
+          payerPhoneE164: '+237600000001',
+          idempotencyKey: randomUUID(),
+          providerName: 'fake',
+        }),
+      ).rejects.toThrow(/payment_link/)
+    })
+
+    it('writes no payment row when it refuses', async () => {
+      const f = await seed('OFF3', { onlinePayments: false })
+      await expect(
+        payLinks.initiate(prisma, f.token, {
+          amountMinor: 100_000n,
+          operator: 'mtn',
+          payerPhoneE164: '+237600000001',
+          idempotencyKey: randomUUID(),
+          providerName: 'fake',
+        }),
+      ).rejects.toThrow()
+
+      // Nothing pending to reconcile: the refusal happens before any write.
+      const rows = await withTenant(prisma, f.tenantId, (tx: Any) =>
+        tx.payment.findMany({ where: { tenantId: f.tenantId } }),
+      )
+      expect(rows).toHaveLength(0)
+    })
   })
 
   describe('GET /pay/:token', () => {
