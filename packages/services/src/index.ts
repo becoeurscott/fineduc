@@ -37,3 +37,10 @@ export type { Logger } from './logger.js'
 /* ------------------------------------------------------- secrets at rest -- */
 
 export { seal, open, sealJson, openJson, encryptionKeyFromHex, SecretBoxError } from './shared/secret-box.js'
+
+export { PaymentConnectionService } from './payments/connection.service.js'
+export type {
+  MonerooCredentials,
+  PaymentConnectionSummary,
+  ResolvedConnection,
+} from './payments/connection.service.js'

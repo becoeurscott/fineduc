@@ -230,6 +230,46 @@ describe('Pay link (real Postgres)', () => {
     })
   })
 
+  /**
+   * The money must land in the SCHOOL's bank, not the platform's. A school
+   * that has connected no aggregator account cannot collect — and critically,
+   * must not quietly collect through someone else's credentials, which would
+   * succeed and put the fees in the wrong place.
+   */
+  describe('a school that has connected no aggregator account', () => {
+    it('refuses to collect through a networked provider', async () => {
+      const f = await seed('BYOK1')
+      await expect(
+        payLinks.initiate(prisma, f.token, {
+          amountMinor: 100_000n,
+          operator: 'mtn',
+          payerPhoneE164: '+237600000001',
+          idempotencyKey: randomUUID(),
+          // No payment_connection row exists for this tenant.
+          providerName: 'moneroo',
+        }),
+      ).rejects.toThrow(/payment_link/)
+    })
+
+    it('writes no payment row when it refuses', async () => {
+      const f = await seed('BYOK2')
+      await expect(
+        payLinks.initiate(prisma, f.token, {
+          amountMinor: 100_000n,
+          operator: 'mtn',
+          payerPhoneE164: '+237600000001',
+          idempotencyKey: randomUUID(),
+          providerName: 'moneroo',
+        }),
+      ).rejects.toThrow()
+
+      const rows = await withTenant(prisma, f.tenantId, (tx: Any) =>
+        tx.payment.findMany({ where: { tenantId: f.tenantId } }),
+      )
+      expect(rows).toHaveLength(0)
+    })
+  })
+
   describe('GET /pay/:token', () => {
     it('shows the parent who and what they are paying for', async () => {
       const f = await seed('V1')

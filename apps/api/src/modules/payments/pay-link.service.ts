@@ -102,8 +102,6 @@ export class PayLinkService {
     const parsed = parsePayLinkToken(token)
     if (!parsed) throw new NotFoundError('payment_link', 'token')
 
-    const provider = this.registry.get(params.providerName)
-
     // The payment row is created in its own transaction and committed BEFORE
     // the provider is called. If the provider call is what fails, we still
     // hold a pending payment we can reconcile; if we held the transaction
@@ -119,13 +117,24 @@ export class PayLinkService {
       if (settings.operators.length > 0 && !settings.operators.includes(params.operator)) {
         throw new NotFoundError('payment_link', 'token')
       }
+
+      /*
+       * The provider is THIS school's, built from the credentials it
+       * connected. There is deliberately no fallback to a platform account:
+       * falling back would succeed, and the money would arrive in the wrong
+       * bank — a failure nobody would notice until a school asked where its
+       * fees were.
+       */
+      const provider = await this.registry.forTenant(tx, parsed.tenantId, params.providerName)
+      if (!provider) throw new NotFoundError('payment_link', 'token')
+
       const amount = Money.of(params.amountMinor, currency)
 
       const replay = await tx.payment.findFirst({
         where: { tenantId: parsed.tenantId, idempotencyKey: params.idempotencyKey },
       })
       if (replay) {
-        return { kind: 'replay' as const, replay, link, currency, amount }
+        return { kind: 'replay' as const, replay, link, currency, amount, provider }
       }
 
       const invoice = await tx.invoice.findUnique({ where: { id: link.invoiceId } })
@@ -148,7 +157,7 @@ export class PayLinkService {
           idempotencyKey: params.idempotencyKey,
         },
       })
-      return { kind: 'created' as const, payment, link, currency, amount }
+      return { kind: 'created' as const, payment, link, currency, amount, provider }
     })
 
     if (prepared.kind === 'replay') {
@@ -162,7 +171,7 @@ export class PayLinkService {
       }
     }
 
-    const { payment, link, amount } = prepared
+    const { payment, link, amount, provider } = prepared
 
     const result = await provider.initiate({
       // THE reference. Without it the worker cannot attribute the callback to

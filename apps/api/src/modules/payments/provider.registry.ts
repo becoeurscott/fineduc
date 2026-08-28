@@ -1,7 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common'
+import { Injectable } from '@nestjs/common'
 import { loadEnv } from '@fineduc/config'
 import { NotFoundError } from '@fineduc/domain'
+import type { TenantTransactionClient } from '@fineduc/db'
 import { FakePaymentProvider, ManualPaymentProvider, MonerooProvider, type PaymentProvider } from '@fineduc/providers'
+import { PaymentConnectionService, encryptionKeyFromHex } from '@fineduc/services'
 
 /**
  * Resolves a provider by the name in the webhook URL.
@@ -16,7 +18,6 @@ import { FakePaymentProvider, ManualPaymentProvider, MonerooProvider, type Payme
  */
 @Injectable()
 export class PaymentProviderRegistry {
-  private readonly logger = new Logger(PaymentProviderRegistry.name)
   private readonly providers = new Map<string, PaymentProvider>()
 
   constructor() {
@@ -32,35 +33,57 @@ export class PaymentProviderRegistry {
     }
 
     /*
-     * Moneroo — the networked provider for mobile money.
+     * NOTHING networked is registered here as a shared singleton.
      *
-     * Both halves of the credential are required. A secret key on its own
-     * would let the API take a payment it could never confirm: the webhook
-     * is what settles money, and without the webhook secret every callback
-     * is rejected as forged. Registering that would strand every parent who
-     * paid. Refusing to register means the checkout is plainly unavailable
-     * instead, which is the failure a school can actually see and report.
+     * A school collects a parent's fees with ITS OWN aggregator account —
+     * the funds go from the aggregator straight to the school's bank, and
+     * Fineduc holds none of them. One platform key set shared by every
+     * school would route every payment into Fineduc's account instead, and
+     * make it a payment institution. Networked providers are therefore built
+     * per tenant, from that school's stored credentials, by `forTenant`.
+     *
+     * `manual` needs no credentials — it records cash taken at the desk — and
+     * `fake` is dev-only, so both stay shared.
      */
-    if (env.MONEROO_SECRET_KEY && env.MONEROO_WEBHOOK_SECRET) {
-      this.register(
-        new MonerooProvider({
-          secretKey: env.MONEROO_SECRET_KEY,
-          webhookSecret: env.MONEROO_WEBHOOK_SECRET,
-          fetch: (url, init) => fetch(url, init),
-        }),
-      )
-    } else if (env.MONEROO_SECRET_KEY) {
-      this.logger.warn(
-        'MONEROO_SECRET_KEY is set but MONEROO_WEBHOOK_SECRET is not. Moneroo is NOT registered — a payment taken now could never be confirmed.',
-      )
-    }
+    this.connections = new PaymentConnectionService(
+      encryptionKeyFromHex(env.ENCRYPTION_KEY),
+      process.env['PUBLIC_API_URL'] ?? 'http://localhost:3010',
+    )
+  }
 
-    // CinetPay and Flutterwave register here once their adapters exist.
-    // Until then their callbacks 404 rather than being quietly mishandled.
-    if (env.NODE_ENV === 'production' && this.providers.size <= 1) {
-      this.logger.warn(
-        'No networked payment provider is registered. Mobile money will be unavailable until an adapter is added.',
-      )
+  private readonly connections: PaymentConnectionService
+
+  /**
+   * The provider that collects for THIS school, built from its own keys.
+   *
+   * A school with no connected account gets `null`, not a fallback: falling
+   * back to a platform account is the exact bug this exists to prevent, and
+   * it would be invisible — the payment would succeed and the money would be
+   * in the wrong bank.
+   */
+  async forTenant(
+    tx: TenantTransactionClient,
+    tenantId: string,
+    name: string,
+  ): Promise<PaymentProvider | null> {
+    // Credential-free providers are the same for everyone.
+    const shared = this.providers.get(name)
+    if (shared) return shared
+
+    const connection = await this.connections.resolveForTenant(tx, tenantId, name)
+    if (!connection) return null
+
+    switch (name) {
+      case 'moneroo':
+        return new MonerooProvider({
+          secretKey: connection.credentials.secretKey,
+          webhookSecret: connection.credentials.webhookSecret,
+          fetch: (url, init) => fetch(url, init),
+        })
+      default:
+        // A stored connection for an aggregator with no adapter is a
+        // configuration error, not something to guess at.
+        return null
     }
   }
 
