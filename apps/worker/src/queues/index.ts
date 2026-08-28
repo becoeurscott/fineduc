@@ -22,6 +22,7 @@ export const QUEUE_NAMES = [
   'receipt-renderer',
   'exporter',
   'director-digest',
+  'subscription-expiry',
   'outbox-publisher',
 ] as const
 
@@ -47,6 +48,9 @@ export const QUEUE_SPECS: Record<QueueName, QueueSpec> = {
   'receipt-renderer': { concurrency: 5, attempts: 5, backoff: EXPONENTIAL },
   'exporter': { concurrency: 2, attempts: 2, backoff: EXPONENTIAL },
   'director-digest': { concurrency: 1, attempts: 2, backoff: EXPONENTIAL },
+  // Retried, because a warning that never arrives is a school cut off with
+  // no notice — but only three times: the next daily run warns anyway.
+  'subscription-expiry': { concurrency: 1, attempts: 3, backoff: EXPONENTIAL },
   // Effectively forever: an unpublished outbox row is a message a school is
   // waiting for, and giving up on it loses work that was already committed.
   'outbox-publisher': { concurrency: 1, attempts: Number.MAX_SAFE_INTEGER },

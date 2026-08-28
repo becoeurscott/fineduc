@@ -19,6 +19,29 @@ export {
 
 export { toTenantDate, parseTenantDate, tenantLocalToInstant } from './shared/tenant-date.js'
 
+// What a school pays Fineduc, and when it is warned (ARCHITECTURE.md §6).
+export {
+  PLAN_TERMS,
+  TRIAL_DAYS,
+  ONBOARDING_FEE_MINOR,
+  EXPIRY_WARNING_DAYS,
+  isOnboardingFeeWaived,
+  priceFor,
+  planForStudentCount,
+  exceedsPlanCap,
+  expiryNoticeFor,
+  daysUntil,
+  nextPeriodEnd,
+} from './billing/subscription.js'
+export type {
+  SubscriptionPlan,
+  SubscriptionBillingPeriod,
+  PlanTerms,
+  ExpiryNotice,
+  ExpiredNotice,
+  ExpiryWarningDay,
+} from './billing/subscription.js'
+
 // Billing (ARCHITECTURE.md §6, §8.1)
 export {
   computeScheduleTotal,

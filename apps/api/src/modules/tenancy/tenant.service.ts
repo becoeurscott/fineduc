@@ -5,7 +5,7 @@
 import { Injectable } from '@nestjs/common'
 import type { Prisma, TenantTransactionClient } from '@fineduc/db'
 import { withTenant } from '@fineduc/db'
-import { NotFoundError } from '@fineduc/domain'
+import { NotFoundError, TRIAL_DAYS, priceFor } from '@fineduc/domain'
 import type { CreateTenantRequest, UpdateTenantRequest } from '@fineduc/contracts'
 import { PrismaService } from '../platform/prisma.service.js'
 
@@ -57,17 +57,29 @@ export class TenantService {
         },
       })
 
-      // Trial subscription.
+      /*
+       * Trial subscription.
+       *
+       * TRIAL_DAYS, not a literal: the landing page promises seven days and
+       * this used to give thirty. A trial longer than the one advertised is
+       * revenue quietly given away; a shorter one cuts a school off before
+       * the day it was told. The constant is the same one the page is
+       * written from.
+       *
+       * The price is the plan's real price, not zero. The row says what this
+       * school will owe when the trial ends, and `status` says it is not
+       * owed yet — a zero here would make the first renewal look free.
+       */
       const now = new Date()
-      const thirtyDaysLater = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
+      const trialEnds = new Date(now.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000)
       await tx.subscription.create({
         data: {
           tenantId,
           plan: 'essentiel',
           billingPeriod: 'monthly',
-          priceMinor: BigInt(0),
+          priceMinor: priceFor('essentiel', 'monthly'),
           currentPeriodStart: now,
-          currentPeriodEnd: thirtyDaysLater,
+          currentPeriodEnd: trialEnds,
           status: 'trialing',
         },
       })

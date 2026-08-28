@@ -4,14 +4,17 @@ import {
   ConsoleMessagingProvider,
   FakePaymentProvider,
   ManualPaymentProvider,
+  MonerooProvider,
   type MessagingProvider,
   type PaymentProvider,
 } from '@fineduc/providers'
+import { createPrismaClient, resolveAppDatabaseUrl } from '@fineduc/db'
 import { consoleLogger } from '@fineduc/services'
 import { createRedis } from './queues/index.js'
 import { createWebhookProcessor } from './jobs/webhook-processor.js'
 import { createReminderScheduler } from './jobs/reminder-scheduler.js'
 import { createMessageSender } from './jobs/message-sender.js'
+import { createSubscriptionExpiryWorker } from './jobs/subscription-expiry.js'
 
 /**
  * The worker process (ARCHITECTURE.md §3, §11).
@@ -32,6 +35,25 @@ function buildProviderRegistry(): Map<string, PaymentProvider> {
   const registry = new Map<string, PaymentProvider>()
   const manual = new ManualPaymentProvider()
   registry.set(manual.name, manual)
+
+  /*
+   * Moneroo has to be resolvable HERE as well as in the API: the API only
+   * enqueues the callback, and it is this process that parses it and settles
+   * the money. A provider registered in one and not the other means every
+   * parent payment is accepted and then never applied.
+   *
+   * Both halves of the credential are required for the same reason as in the
+   * API — without the webhook secret nothing can be verified, and an
+   * unverifiable callback is one this worker must refuse.
+   */
+  if (env.MONEROO_SECRET_KEY && env.MONEROO_WEBHOOK_SECRET) {
+    const moneroo = new MonerooProvider({
+      secretKey: env.MONEROO_SECRET_KEY,
+      webhookSecret: env.MONEROO_WEBHOOK_SECRET,
+      fetch: (url, init) => fetch(url, init),
+    })
+    registry.set(moneroo.name, moneroo)
+  }
 
   // Never in production: a scriptable provider there would let anyone who
   // guessed the secret fabricate a settlement.
@@ -77,10 +99,18 @@ async function main(): Promise<void> {
   const reminderScheduler = createReminderScheduler({ connection })
   const messageSender = createMessageSender({ connection, resolveProvider: buildMessagingRegistry() })
 
+  // Nothing renews itself: Moneroo has no card on file, so a school that is
+  // not warned simply stops working one morning.
+  const prisma = createPrismaClient({
+    databaseUrl: resolveAppDatabaseUrl(env.DATABASE_URL, env.APP_DATABASE_URL),
+  })
+  const subscriptionExpiry = createSubscriptionExpiryWorker(connection, { prisma })
+
   const workers = [
     ['webhook-processor', webhookProcessor],
     ['reminder-scheduler', reminderScheduler],
     ['message-sender', messageSender],
+    ['subscription-expiry', subscriptionExpiry],
   ] as const
 
   for (const [name, worker] of workers) {
@@ -99,6 +129,7 @@ async function main(): Promise<void> {
     // would roll back, but the job would be marked stalled and retried, and
     // draining avoids that churn entirely.
     await Promise.all(workers.map(([, worker]) => worker.close()))
+    await prisma.$disconnect()
     await connection.quit()
     process.exit(0)
   }
