@@ -402,11 +402,13 @@ async function main() {
         data: {
           tenantId: tenant.id,
           plan: 'essentiel',
-          billingPeriod: 'annual',
+          // Monthly: the only period there is a Chariow product for, so it is
+          // the only one a seeded school could actually renew.
+          billingPeriod: 'monthly',
           studentCap: 250,
-          priceMinor: Money.ofMajor(240_000, 'XAF').amount,
+          priceMinor: Money.ofMajor(25_000, 'XAF').amount,
           currentPeriodStart: new Date('2026-09-01'),
-          currentPeriodEnd: new Date('2027-08-31'),
+          currentPeriodEnd: new Date('2026-09-30'),
           status: 'active',
         },
       })

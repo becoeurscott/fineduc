@@ -257,7 +257,7 @@ export const CONTENT = {
       eyebrow: 'Tarifs',
       title: 'Vous nous payez sur ce que nous récupérons.',
       subtitle:
-        'Pour une école de 400 élèves à 250 000 FCFA par an, la formule Croissance annuelle représente 0,58 % des encaissements. Récupérer 3 % d’arriérés en plus rapporte 3 000 000 FCFA.',
+        'Pour une école de 400 élèves à 250 000 FCFA par an, la formule Croissance représente 0,72 % des encaissements. Récupérer 3 % d’arriérés en plus rapporte 3 000 000 FCFA.',
       monthly: 'Mensuel',
       annual: 'Annuel (−20 %)',
       perMonth: '/ mois',
@@ -314,7 +314,7 @@ export const CONTENT = {
         'Les messages sont facturés à l’unité sur un crédit prépayé : jamais de facture surprise. WhatsApp 10 FCFA, SMS 30 FCFA. Vous fixez un plafond mensuel ; au plafond, l’envoi s’arrête et l’économe est prévenu.',
       onboardingTitle: 'Accompagnement au démarrage — 150 000 FCFA',
       onboardingBody:
-        'Reprise de vos registres existants, paramétrage de la grille tarifaire et deux sessions de formation. Offert pour tout contrat annuel Croissance ou Institution.',
+        'Reprise de vos registres existants, paramétrage de la grille tarifaire et deux sessions de formation.',
       feesNote:
         'Les frais de l’agrégateur de paiement (1,5 à 3,5 %) sont répercutés, au choix, sur le parent ou sur l’école. Fineduc ne prélève rien dessus.',
     },
@@ -526,7 +526,7 @@ export const CONTENT = {
       eyebrow: 'Pricing',
       title: 'You pay us out of what we recover.',
       subtitle:
-        'For a 400-student school charging 250,000 FCFA a year, the annual Croissance plan is 0.58% of collections. Recovering just 3% more arrears returns 3,000,000 FCFA.',
+        'For a 400-student school charging 250,000 FCFA a year, the Croissance plan is 0.72% of collections. Recovering just 3% more arrears returns 3,000,000 FCFA.',
       monthly: 'Monthly',
       annual: 'Annual (−20%)',
       perMonth: '/ month',
@@ -583,7 +583,7 @@ export const CONTENT = {
         'Messages are billed per unit from a prepaid balance: never a surprise invoice. WhatsApp 10 FCFA, SMS 30 FCFA. You set a monthly cap; at the cap, sending stops and the bursar is warned.',
       onboardingTitle: 'Onboarding — 150,000 FCFA',
       onboardingBody:
-        'Migration from your existing registers, fee-schedule setup and two training sessions. Waived on any annual Croissance or Institution contract.',
+        'Migration from your existing registers, fee-schedule setup and two training sessions.',
       feesNote:
         'Payment aggregator fees (1.5–3.5%) are passed through, to either the parent or the school. Fineduc takes nothing from them.',
     },

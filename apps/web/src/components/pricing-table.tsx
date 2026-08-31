@@ -1,6 +1,3 @@
-'use client'
-
-import { useState } from 'react'
 import Link from 'next/link'
 import clsx from 'clsx'
 import { CountUp } from './count-up'
@@ -38,40 +35,19 @@ type Pricing = {
 /**
  * The pricing table (PRD §7).
  *
- * Annual is the default selection, not monthly — PRD §7 expects most
- * revenue there, because schools budget once a year out of registration
- * income. Showing the annual figure first also shows the lower number,
- * which is the honest one for how these buyers actually pay.
+ * MONTHLY ONLY, for now. The table used to default to an annual tab at −20 %,
+ * which PRD §7 expects most revenue to come from — but there is no annual
+ * product to sell: Chariow charges a pre-priced product and only the three
+ * monthly ones exist, so the checkout refuses an annual period outright.
+ *
+ * A page quoting the cheaper annual figure by default was therefore
+ * advertising a price nobody could be charged. The plans keep their `annual`
+ * copy so restoring the toggle is a matter of putting this markup back once
+ * the annual products exist.
  */
 export function PricingTable({ pricing, ctaHref }: { pricing: Pricing; ctaHref: string }) {
-  const [annual, setAnnual] = useState(true)
-
   return (
     <div className="mt-10">
-      <div
-        role="tablist"
-        aria-label={`${pricing.monthly} / ${pricing.annual}`}
-        className="mx-auto mb-12 inline-flex items-center gap-1 rounded-[var(--radius-mkt-pill)] bg-[#edf1f4] p-1.5"
-      >
-        {[
-          { key: false, label: pricing.monthly },
-          { key: true, label: pricing.annual },
-        ].map((tab) => (
-          <button
-            key={String(tab.key)}
-            role="tab"
-            aria-selected={annual === tab.key}
-            onClick={() => setAnnual(tab.key)}
-            className={clsx(
-              'h-11 rounded-[var(--radius-mkt-pill)] px-6 text-[15px] font-medium transition-colors',
-              annual === tab.key ? 'bg-black text-white' : 'text-slate hover:text-ink',
-            )}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
       <div className="grid gap-4 lg:grid-cols-3">
         {pricing.plans.map((plan) => {
           const highlighted = 'highlighted' in plan && plan.highlighted
@@ -105,7 +81,7 @@ export function PricingTable({ pricing, ctaHref }: { pricing: Pricing; ctaHref: 
                     highlighted ? 'text-white' : 'text-ink',
                   )}
                 >
-                  <CountUp value={annual ? plan.annual : plan.monthly} />
+                  <CountUp value={plan.monthly} />
                 </span>
                 <span className={clsx('ml-1.5 text-sm', highlighted ? 'text-white/60' : 'text-slate')}>
                   FCFA {pricing.perMonth}
