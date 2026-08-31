@@ -112,15 +112,23 @@ async function main(): Promise<void> {
    * indefensible. It also could not, since message.guardian_id is NOT NULL
    * and a director is a User.
    */
-  const expirySms = env.SMS_API_KEY
-    ? {
-        send: (message: { toPhoneE164: string; body: string; idempotencyKey: string }) =>
-          buildMessagingRegistry()('sms').send({ ...message, channel: 'sms' as const }),
-      }
-    : undefined
-  if (!expirySms) {
-    logger.warn('SMS_API_KEY unset — subscription expiry notices will be recorded but not sent')
+  const expirySms = {
+    send: (message: { toPhoneE164: string; body: string; idempotencyKey: string }) =>
+      buildMessagingRegistry()('sms').send({ ...message, channel: 'sms' as const }),
   }
+
+  /*
+   * Warned unconditionally, and NOT gated on SMS_API_KEY, because the key is
+   * not what is missing: packages/providers' sms.ts and whatsapp.ts are both
+   * `export {}` stubs, so buildMessagingRegistry hands back the CONSOLE
+   * adapter whatever the environment says. Setting the key would change
+   * nothing, and a warning that disappeared once it was set would read as
+   * "now it sends" when it still only logs.
+   */
+  logger.warn(
+    'No real messaging adapter exists (sms.ts/whatsapp.ts are stubs) — expiry and reminder ' +
+      'messages are LOGGED, not sent. The in-app countdown is the only warning a school actually receives.',
+  )
 
   const subscriptionExpiry = createSubscriptionExpiryWorker(connection, {
     prisma,
