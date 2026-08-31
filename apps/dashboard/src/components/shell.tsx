@@ -7,6 +7,7 @@ import { can, type Capability } from '@fineduc/contracts'
 import { useApp } from '@/lib/app-context'
 import { useAuth } from '@/lib/auth'
 import { ROLE_LABEL, type TranslationKey } from '@/lib/i18n'
+import { SubscriptionBanner } from './subscription-banner'
 
 interface NavItem {
   href: string
@@ -31,6 +32,9 @@ const NAV: NavItem[] = [
   { href: '/reminders', labelKey: 'nav.reminders', capability: 'reminders.send', icon: '◌' },
   { href: '/moratoires', labelKey: 'nav.moratoires', capability: 'moratorium.view', icon: '◷' },
   { href: '/admin', labelKey: 'nav.admin', capability: 'users.manage', icon: '⚙' },
+  // Director-gated on users.manage: there is no billing capability, and paying
+  // for the school is the same audience that manages its people.
+  { href: '/abonnement', labelKey: 'nav.subscription', capability: 'users.manage', icon: '◈' },
 ]
 
 export function Shell({ children }: { children: React.ReactNode }) {
@@ -83,6 +87,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </header>
+
+      {/* Directly under the header, above the nav: a deadline nobody can
+          renew is worse than one they scrolled past. Renders nothing until
+          the last week. */}
+      <SubscriptionBanner />
 
       <div className="mx-auto flex max-w-7xl gap-6 px-4 py-5">
         {/* Sidebar on desktop only — the phone gets the bottom bar below. */}

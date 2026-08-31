@@ -19,6 +19,7 @@ export const DICT = {
     'nav.reminders': 'Rappels',
     'nav.moratoires': 'Moratoires',
     'nav.admin': 'Administration',
+    'nav.subscription': 'Abonnement',
 
     'common.search': 'Rechercher',
     'common.loading': 'Chargement…',
@@ -179,6 +180,7 @@ export const DICT = {
     'nav.reminders': 'Reminders',
     'nav.moratoires': 'Payment delays',
     'nav.admin': 'Administration',
+    'nav.subscription': 'Subscription',
 
     'common.search': 'Search',
     'common.loading': 'Loading…',
