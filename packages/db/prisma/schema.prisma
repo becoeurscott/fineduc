@@ -368,6 +368,7 @@ model Tenant {
   memberships          Membership[]
   apiKeys              ApiKey[]
   paymentConnections   PaymentConnection[]
+  subscriptionPayments SubscriptionPayment[]
   academicYears        AcademicYear[]
   termSchedule         Term[]
   gradeLevels          GradeLevel[]
@@ -1521,6 +1522,42 @@ model PaymentConnection {
   @@unique([tenantId, provider])
   @@index([tenantId])
   @@map("payment_connection")
+}
+
+/// A charge toward the school's OWN subscription to Fineduc — not a parent's
+/// fee. Kept separate from `Payment`, which requires a student and an
+/// invoice and is money moving toward a school's OWN receivables, not
+/// Fineduc's. Mixing the two into one table would let a bug in one money
+/// path corrupt the other.
+///
+/// Chariow is a platform-account provider here: unlike `PaymentConnection`,
+/// which holds a school's OWN aggregator keys for collecting FROM parents,
+/// a subscription charge collects FROM the school, so Fineduc's own
+/// credentials are what pays for it (env, not this table).
+model SubscriptionPayment {
+  id             String             @id @default(uuid()) @db.Uuid
+  tenantId       String             @map("tenant_id") @db.Uuid
+  plan           Plan
+  billingPeriod  BillingPeriod      @map("billing_period")
+  amountMinor    BigInt             @map("amount_minor")
+  /// XAF today; kept per-row rather than assumed, the same reasoning as
+  /// `Payment.currency` — a mismatch is a signal, not something to coerce.
+  currency       String             @db.Char(3)
+  status         PaymentStatus      @default(pending)
+  provider       String
+  providerRef    String?            @map("provider_ref")
+  /// Required on every money-moving write (AGENTS.md rule #5).
+  idempotencyKey String             @map("idempotency_key")
+  succeededAt    DateTime?          @map("succeeded_at") @db.Timestamptz(6)
+  rawProviderPayload Json?          @map("raw_provider_payload")
+  createdAt      DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId])
+  @@map("subscription_payment")
 }
 
 /// APPEND-ONLY, no delete grant for any application role (AGENTS.md rule #10).

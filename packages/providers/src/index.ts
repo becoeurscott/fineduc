@@ -30,6 +30,8 @@ export { CinetPayProvider } from './payment/adapters/cinetpay.js'
 export type { CinetPayOptions } from './payment/adapters/cinetpay.js'
 export { MonerooProvider } from './payment/adapters/moneroo.js'
 export type { MonerooOptions } from './payment/adapters/moneroo.js'
+export { ChariowProvider } from './payment/adapters/chariow.js'
+export type { ChariowOptions } from './payment/adapters/chariow.js'
 
 export { postJson, getJson, DEFAULT_POLICY, HttpTimeoutError } from './http.js'
 export type { FetchLike, HttpPolicy } from './http.js'

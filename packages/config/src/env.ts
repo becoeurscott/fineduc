@@ -96,6 +96,18 @@ const EnvSchema = z
     MONEROO_SECRET_KEY: z.string().default(''),
     MONEROO_WEBHOOK_SECRET: z.string().default(''),
 
+    /**
+     * Chariow — Fineduc's own subscription billing ONLY (platform account,
+     * not a school's). Chariow charges a pre-priced product; the three ids
+     * below are that product for each plan (monthly only), created once in
+     * the Chariow dashboard and never derived at runtime.
+     */
+    CHARIOW_API_KEY: z.string().default(''),
+    CHARIOW_WEBHOOK_SECRET: z.string().default(''),
+    CHARIOW_PRODUCT_ESSENTIEL_MONTHLY: z.string().default(''),
+    CHARIOW_PRODUCT_CROISSANCE_MONTHLY: z.string().default(''),
+    CHARIOW_PRODUCT_INSTITUTION_MONTHLY: z.string().default(''),
+
     WHATSAPP_PHONE_NUMBER_ID: z.string().default(''),
     WHATSAPP_ACCESS_TOKEN: z.string().default(''),
     WHATSAPP_WEBHOOK_SECRET: z.string().default(''),
@@ -187,6 +199,8 @@ export const SENSITIVE_ENV_KEYS = [
   'CINETPAY_WEBHOOK_SECRET',
   'MONEROO_SECRET_KEY',
   'MONEROO_WEBHOOK_SECRET',
+  'CHARIOW_API_KEY',
+  'CHARIOW_WEBHOOK_SECRET',
   'WHATSAPP_ACCESS_TOKEN',
   'WHATSAPP_WEBHOOK_SECRET',
   'SMS_API_KEY',

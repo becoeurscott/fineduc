@@ -13,6 +13,7 @@ import { AuditModule } from './modules/audit/audit.module.js'
 import { ProblemJsonFilter } from './common/filters/problem-json.js'
 import { AuthGuard } from './common/guards/auth.guard.js'
 import { RolesGuard } from './common/guards/roles.js'
+import { SubscriptionGuard } from './common/guards/subscription.guard.js'
 import { TenantContextInterceptor } from './common/interceptors/tenant-context.js'
 import { AuditInterceptor } from './common/interceptors/audit.js'
 
@@ -41,6 +42,16 @@ import { AuditInterceptor } from './common/interceptors/audit.js'
     {
       provide: APP_GUARD,
       useClass: RolesGuard,
+    },
+    /*
+     * Last of the three, deliberately. Authentication and role both answer
+     * "may this person do this at all"; billing answers "is this school still
+     * a customer". Asking the cheaper questions first means an unauthenticated
+     * or forbidden request never costs a subscription lookup.
+     */
+    {
+      provide: APP_GUARD,
+      useClass: SubscriptionGuard,
     },
     {
       provide: APP_INTERCEPTOR,

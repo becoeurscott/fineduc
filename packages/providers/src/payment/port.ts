@@ -39,6 +39,18 @@ export interface InitiatePaymentRequest {
   readonly idempotencyKey: string
   readonly returnUrl?: string
   readonly notifyUrl?: string
+  /**
+   * A pre-priced product to sell, for a provider whose checkout charges what
+   * its own shop says a product costs rather than an arbitrary `amount` —
+   * Chariow is the example. `amount` is still required on the request and
+   * is what such an adapter validates against, so a mismatch between what
+   * Fineduc believes the product costs and what the aggregator's shop is
+   * actually configured to charge is caught before the buyer is redirected,
+   * not discovered from a settled amount that does not add up.
+   *
+   * Absent for a provider that takes an arbitrary amount directly.
+   */
+  readonly productId?: string
 }
 
 export interface InitiatePaymentResult {
