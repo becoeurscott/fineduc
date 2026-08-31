@@ -1,0 +1,46 @@
+# Keeps the Render API awake.
+#
+# The free plan sleeps a service after ~15 minutes idle, and the next request
+# then waits ~41 seconds for Node to boot — measured, twice, and once it
+# returned a 520 instead. In a browser that surfaces as "impossible de joindre
+# le serveur", which is indistinguishable from the server being down.
+#
+# So this pings /health often enough that the instance never sleeps. It is a
+# workaround for a plan limit, not a fix: the honest fix is a paid instance,
+# and this file should be deleted the day that happens.
+#
+# Free on this repository because it is public; on a private repo the same
+# schedule would exceed the free Actions minutes, since GitHub bills a whole
+# minute per run.
+name: keep-alive
+
+on:
+  schedule:
+    # Every 10 minutes, against a 15-minute sleep timer — two pings inside
+    # each window, so one skipped run does not let the service drop.
+    - cron: '*/10 * * * *'
+  # So it can be triggered by hand after a deploy rather than waiting.
+  workflow_dispatch:
+
+# A run that overlaps the next one buys nothing; keep the newest.
+concurrency:
+  group: keep-alive
+  cancel-in-progress: true
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Ping the API health endpoint
+        run: |
+          # --max-time 120 because a COLD hit is the expensive one this exists
+          # to prevent: it must wait out the boot rather than give up and
+          # leave the instance asleep for the next real user.
+          code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 120 \
+            https://api.fineeduc.com/health || echo "000")
+          echo "health -> HTTP $code"
+          # Never fails the workflow. A red X every time Render blips would
+          # train everyone to ignore this repo's Actions tab, and the ping is
+          # best-effort by nature.
+          exit 0
