@@ -24,6 +24,7 @@ export const QUEUE_NAMES = [
   'director-digest',
   'subscription-expiry',
   'outbox-publisher',
+  'daily-sweep',
 ] as const
 
 export type QueueName = (typeof QUEUE_NAMES)[number]
@@ -54,6 +55,11 @@ export const QUEUE_SPECS: Record<QueueName, QueueSpec> = {
   // Effectively forever: an unpublished outbox row is a message a school is
   // waiting for, and giving up on it loses work that was already committed.
   'outbox-publisher': { concurrency: 1, attempts: Number.MAX_SAFE_INTEGER },
+  // The daily tick that fans every other recurring job out per tenant. Before
+  // it existed those queues had workers and no producer, so nothing recurring
+  // ever ran. Retried twice: a sweep that fails has enqueued nothing, and the
+  // work it would have done is not time-critical to the minute.
+  'daily-sweep': { concurrency: 1, attempts: 2, backoff: EXPONENTIAL },
 }
 
 /**

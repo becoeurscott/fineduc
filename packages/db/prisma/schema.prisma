@@ -369,6 +369,7 @@ model Tenant {
   apiKeys              ApiKey[]
   paymentConnections   PaymentConnection[]
   subscriptionPayments SubscriptionPayment[]
+  subscriptionNotices  SubscriptionNotice[]
   academicYears        AcademicYear[]
   termSchedule         Term[]
   gradeLevels          GradeLevel[]
@@ -1558,6 +1559,37 @@ model SubscriptionPayment {
   @@unique([tenantId, idempotencyKey])
   @@index([tenantId])
   @@map("subscription_payment")
+}
+
+/// One row per expiry notice actually sent to a school.
+///
+/// Exists for idempotency, not for reporting. The expiry job runs daily and is
+/// retried on failure, so without a uniqueness constraint a school would be
+/// texted twice about the same deadline — and a director messaged repeatedly
+/// stops reading the one notice that matters.
+///
+/// Unique on (tenant, periodEnd, daysRemaining): keyed to the DEADLINE rather
+/// than to the day the job ran, so a re-run, a retry, or a catch-up after an
+/// outage all recognise the notice as already sent. `daysRemaining` is part of
+/// the key because 7, 3 and 1 are three distinct notices about the same period.
+model SubscriptionNotice {
+  id            String   @id @default(uuid()) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  /// The period end this notice was about, as a calendar date.
+  periodEnd     DateTime @map("period_end") @db.Date
+  /// Which notice: 7, 3, 1 — or 0 for the lapse itself.
+  daysRemaining Int      @map("days_remaining")
+  /// `sms`, or `none` when the school had no reachable phone. Recorded either
+  /// way, so a silent failure is visible rather than looking like a send.
+  channel       String
+  toPhoneE164   String?  @map("to_phone_e164")
+  sentAt        DateTime @default(now()) @map("sent_at") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, periodEnd, daysRemaining])
+  @@index([tenantId])
+  @@map("subscription_notice")
 }
 
 /// APPEND-ONLY, no delete grant for any application role (AGENTS.md rule #10).

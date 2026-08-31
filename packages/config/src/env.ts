@@ -108,6 +108,14 @@ const EnvSchema = z
     CHARIOW_PRODUCT_CROISSANCE_MONTHLY: z.string().default(''),
     CHARIOW_PRODUCT_INSTITUTION_MONTHLY: z.string().default(''),
 
+    /**
+     * Where an expiry SMS tells a director to go and renew. Baked into a
+     * message that has already been delivered by the time anyone notices it
+     * is wrong, so it is configured rather than guessed from a request host —
+     * the worker has no request to guess from.
+     */
+    SUBSCRIPTION_RENEW_URL: z.string().default('https://app.fineeduc.com/abonnement'),
+
     WHATSAPP_PHONE_NUMBER_ID: z.string().default(''),
     WHATSAPP_ACCESS_TOKEN: z.string().default(''),
     WHATSAPP_WEBHOOK_SECRET: z.string().default(''),

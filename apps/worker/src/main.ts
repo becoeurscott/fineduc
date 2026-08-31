@@ -10,11 +10,12 @@ import {
 } from '@fineduc/providers'
 import { createPrismaClient, resolveAppDatabaseUrl } from '@fineduc/db'
 import { consoleLogger } from '@fineduc/services'
-import { createRedis } from './queues/index.js'
+import { createQueue, createRedis } from './queues/index.js'
 import { createWebhookProcessor } from './jobs/webhook-processor.js'
 import { createReminderScheduler } from './jobs/reminder-scheduler.js'
 import { createMessageSender } from './jobs/message-sender.js'
 import { createSubscriptionExpiryWorker } from './jobs/subscription-expiry.js'
+import { createDailySweepWorker, installDailySchedule } from './jobs/daily-sweep.js'
 
 /**
  * The worker process (ARCHITECTURE.md §3, §11).
@@ -104,13 +105,50 @@ async function main(): Promise<void> {
   const prisma = createPrismaClient({
     databaseUrl: resolveAppDatabaseUrl(env.DATABASE_URL, env.APP_DATABASE_URL),
   })
-  const subscriptionExpiry = createSubscriptionExpiryWorker(connection, { prisma })
+  /*
+   * Fineduc pays for its own dunning SMS, so this deliberately does NOT go
+   * through message-sender: that path debits the school's prepaid credits,
+   * and charging a school to be chased for money it owes us would be
+   * indefensible. It also could not, since message.guardian_id is NOT NULL
+   * and a director is a User.
+   */
+  const expirySms = env.SMS_API_KEY
+    ? {
+        send: (message: { toPhoneE164: string; body: string; idempotencyKey: string }) =>
+          buildMessagingRegistry()('sms').send({ ...message, channel: 'sms' as const }),
+      }
+    : undefined
+  if (!expirySms) {
+    logger.warn('SMS_API_KEY unset — subscription expiry notices will be recorded but not sent')
+  }
+
+  const subscriptionExpiry = createSubscriptionExpiryWorker(connection, {
+    prisma,
+    sms: expirySms,
+    renewUrl: env.SUBSCRIPTION_RENEW_URL,
+  })
+
+  /*
+   * The producer every other recurring queue was missing. Without it those
+   * workers listen to queues nothing writes to — which is exactly how this
+   * system shipped with no school ever warned and no parent ever reminded.
+   */
+  const dailySweep = createDailySweepWorker(connection, {
+    prisma,
+    queues: {
+      subscriptionExpiry: createQueue('subscription-expiry', connection),
+      reminderScheduler: createQueue('reminder-scheduler', connection),
+      messageSender: createQueue('message-sender', connection),
+    },
+  })
+  await installDailySchedule(connection, logger)
 
   const workers = [
     ['webhook-processor', webhookProcessor],
     ['reminder-scheduler', reminderScheduler],
     ['message-sender', messageSender],
     ['subscription-expiry', subscriptionExpiry],
+    ['daily-sweep', dailySweep],
   ] as const
 
   for (const [name, worker] of workers) {

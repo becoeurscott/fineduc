@@ -25,15 +25,33 @@ interface Options {
   billingPeriod?: string
   timezone?: string
   subscription?: null
+  /** Director phone, or null for a school nobody can text. */
+  phone?: string | null
+  /** Make the notice insert fail the way a unique violation would. */
+  alreadyNoticed?: boolean
+  /** Omit to simulate an environment with no SMS credentials. */
+  withSms?: boolean
+  locale?: string
 }
 
 function deps(options: Options) {
   const updateMany = vi.fn().mockResolvedValue({ count: 1 })
+  const send = vi.fn().mockResolvedValue({ ok: true })
+  const noticeCreate = options.alreadyNoticed
+    ? vi.fn().mockRejectedValue(new Error('unique constraint'))
+    : vi.fn().mockResolvedValue({ id: 'notice-1' })
   const tx = {
+    subscriptionNotice: { create: noticeCreate },
+    membership: {
+      findFirst: vi.fn().mockResolvedValue(
+        options.phone === null ? null : { user: { phone: options.phone ?? '+237670000001' } },
+      ),
+    },
     tenant: {
       findUniqueOrThrow: vi.fn().mockResolvedValue({
         id: TENANT,
         name: 'Collège Test',
+        locale: options.locale ?? 'fr',
         timezone: options.timezone ?? 'Africa/Douala',
       }),
     },
@@ -55,11 +73,19 @@ function deps(options: Options) {
   }
   const logger = { warn: vi.fn(), error: vi.fn(), log: vi.fn() }
   return {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    d: { prisma: { __tx: tx } as any, logger, now: () => new Date('2026-09-23T08:00:00Z') } as SubscriptionExpiryDeps,
+    d: {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      prisma: { __tx: tx } as any,
+      logger,
+      now: () => new Date('2026-09-23T08:00:00Z'),
+      sms: options.withSms === false ? undefined : { send },
+      renewUrl: 'https://app.fineeduc.com/abonnement',
+    } as SubscriptionExpiryDeps,
     tx,
     updateMany,
     logger,
+    send,
+    noticeCreate,
   }
 }
 
@@ -101,6 +127,101 @@ describe('warning a school its subscription is about to lapse', () => {
     // tell a school its renewal costs nothing.
     const { d } = deps({ periodEnd: '2026-09-30', priceMinor: 0n, plan: 'croissance' })
     expect((await runSubscriptionExpiry(d, job)).priceMinor).toBe(60_000n)
+  })
+})
+
+/**
+ * The send itself. This is the half that did not exist: the job decided
+ * correctly and then told nobody, so a school's only warning was noticing the
+ * countdown in a dashboard it might not open.
+ */
+describe('actually telling the school', () => {
+  it('texts the director on a warning day', async () => {
+    const { d, send } = deps({ periodEnd: '2026-09-30' })
+    const result = await runSubscriptionExpiry(d, job)
+
+    expect(result.sent).toBe(true)
+    expect(send).toHaveBeenCalledTimes(1)
+    const message = send.mock.calls[0]![0] as { toPhoneE164: string; body: string }
+    expect(message.toPhoneE164).toBe('+237670000001')
+    expect(message.body).toContain('7 jour')
+    expect(message.body).toContain('2026-09-30')
+    // The amount owed is in the message; a renewal notice without a price
+    // makes a bursar log in just to find out what to send.
+    expect(message.body).toContain('25')
+    expect(message.body).toContain('https://app.fineeduc.com/abonnement')
+  })
+
+  it('says nothing at all on a non-warning day', async () => {
+    const { d, send, noticeCreate } = deps({ periodEnd: '2026-09-29' })
+    await runSubscriptionExpiry(d, job)
+    expect(send).not.toHaveBeenCalled()
+    expect(noticeCreate).not.toHaveBeenCalled()
+  })
+
+  /**
+   * The daily schedule retries, and a second worker instance would tick too.
+   * The unique row on (tenant, periodEnd, daysRemaining) is what stops a
+   * director being texted the same warning twice.
+   */
+  it('does not send twice for the same deadline', async () => {
+    const { d, send } = deps({ periodEnd: '2026-09-30', alreadyNoticed: true })
+    const result = await runSubscriptionExpiry(d, job)
+
+    expect(result.skipped).toBe('already_sent')
+    expect(result.sent).toBe(false)
+    expect(send).not.toHaveBeenCalled()
+  })
+
+  it('claims the notice BEFORE sending, so a crash under-sends rather than double-sends', async () => {
+    const { d, send, noticeCreate } = deps({ periodEnd: '2026-09-30' })
+    await runSubscriptionExpiry(d, job)
+    expect(noticeCreate.mock.invocationCallOrder[0]!).toBeLessThan(send.mock.invocationCallOrder[0]!)
+  })
+
+  it('records a school with no reachable director rather than looking warned', async () => {
+    const { d, send, noticeCreate } = deps({ periodEnd: '2026-09-30', phone: null })
+    const result = await runSubscriptionExpiry(d, job)
+
+    expect(result.skipped).toBe('no_phone')
+    expect(send).not.toHaveBeenCalled()
+    // Still written, with channel 'none': otherwise an unreachable school is
+    // indistinguishable in the data from one that was successfully warned.
+    expect(noticeCreate.mock.calls[0]![0].data.channel).toBe('none')
+  })
+
+  /**
+   * A provider outage must not roll back the past_due write. Losing an SMS
+   * costs one warning; losing the lapse silently gives the product away.
+   */
+  it('still marks past_due when the SMS provider throws', async () => {
+    const { d, send, updateMany } = deps({ periodEnd: '2026-09-20' })
+    send.mockRejectedValueOnce(new Error('provider down'))
+
+    const result = await runSubscriptionExpiry(d, job)
+    expect(result.expired).toBe(true)
+    expect(result.sent).toBe(false)
+    expect(updateMany).toHaveBeenCalled()
+  })
+
+  it('runs without an SMS provider at all', async () => {
+    const { d } = deps({ periodEnd: '2026-09-30', withSms: false })
+    const result = await runSubscriptionExpiry(d, job)
+    expect(result.skipped).toBe('no_provider')
+    expect(result.notified).toBe(7)
+  })
+
+  it('writes in English for an English school', async () => {
+    const { d, send } = deps({ periodEnd: '2026-09-30', locale: 'en' })
+    await runSubscriptionExpiry(d, job)
+    expect((send.mock.calls[0]![0] as { body: string }).body).toContain('day')
+  })
+
+  it('never texts a school that cancelled', async () => {
+    // It already decided. Chasing it is spam.
+    const { d, send } = deps({ periodEnd: '2026-09-20', status: 'cancelled' })
+    await runSubscriptionExpiry(d, job)
+    expect(send).not.toHaveBeenCalled()
   })
 })
 
