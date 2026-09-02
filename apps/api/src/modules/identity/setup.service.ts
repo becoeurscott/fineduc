@@ -472,7 +472,10 @@ export class SetupService {
     }
 
     await this.sendCode(newEmail.toLowerCase().trim(), 'email')
-    this.logger.log(`Sent onboarding email code to ${newEmail} for user ${userId}`)
+    // The user id stays — it is what support traces a stuck onboarding by,
+    // and a uuid is not one of the identifiers rule #11 names. The address
+    // goes: it is PII, and the line said nothing the id does not.
+    this.logger.log(`Sent onboarding email code for user ${userId}`)
   }
 
   async verifyOnboardingEmail(userId: string, code: string) {
@@ -517,7 +520,7 @@ export class SetupService {
       throw new SetupError('NO_PHONE', 'No phone number on file')
     }
     await this.sendCode(user.phone, 'phone')
-    this.logger.log(`Sent onboarding phone code to ${user.phone} for user ${userId}`)
+    this.logger.log(`Sent onboarding phone code for user ${userId}`)
   }
 
   async verifyOnboardingPhone(userId: string, code: string) {
@@ -547,7 +550,7 @@ export class SetupService {
       data: { usedAt: new Date() },
     })
 
-    this.logger.log(`User ${userId} verified phone ${user.phone}`)
+    this.logger.log(`User ${userId} verified their phone`)
     return { phoneVerified: true }
   }
 
@@ -627,7 +630,19 @@ export class SetupService {
       },
     })
 
-    this.logger.warn(`[DEV] ${channel} verification code for ${target}: ${code}`)
+    /*
+     * AGENTS.md rule #11: never log a phone number, an address, a token or a
+     * secret. A live verification code is a secret and the target it belongs
+     * to is PII, so neither reaches a production log.
+     *
+     * Outside production the code IS printed, because no email or SMS
+     * provider is wired yet and it is the only way to complete the flow —
+     * but never alongside the address, so a dev log still cannot be replayed
+     * against a real person.
+     */
+    if (process.env['NODE_ENV'] !== 'production') {
+      this.logger.warn(`[DEV] ${channel} verification code: ${code}`)
+    }
   }
 
   /**

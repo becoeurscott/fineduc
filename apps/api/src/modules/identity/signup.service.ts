@@ -200,8 +200,20 @@ export class SignupService {
       },
     })
 
-    // TODO: send via email provider when one exists
-    this.logger.warn(`[DEV] Email verification code for ${email}: ${code}`)
+    /*
+     * AGENTS.md rule #11: never log a phone number, an address, a token or a
+     * secret. A live verification code is a secret and the target it belongs
+     * to is PII, so neither reaches a production log.
+     *
+     * Outside production the code IS printed, because no email or SMS
+     * provider is wired yet and it is the only way to complete the flow —
+     * but never alongside the address, so a dev log still cannot be replayed
+     * against a real person.
+     */
+    // TODO: send via the email port once an adapter exists.
+    if (process.env['NODE_ENV'] !== 'production') {
+      this.logger.warn(`[DEV] email verification code: ${code}`)
+    }
   }
 
   private async sendPhoneCode(email: string): Promise<void> {
@@ -226,8 +238,20 @@ export class SignupService {
       },
     })
 
-    // TODO: send via SMS provider when one exists
-    this.logger.warn(`[DEV] Phone verification code for ${phone}: ${code}`)
+    /*
+     * AGENTS.md rule #11: never log a phone number, an address, a token or a
+     * secret. A live verification code is a secret and the target it belongs
+     * to is PII, so neither reaches a production log.
+     *
+     * Outside production the code IS printed, because no email or SMS
+     * provider is wired yet and it is the only way to complete the flow —
+     * but never alongside the address, so a dev log still cannot be replayed
+     * against a real person.
+     */
+    // TODO: send via the messaging port once the SMS adapter is real.
+    if (process.env['NODE_ENV'] !== 'production') {
+      this.logger.warn(`[DEV] phone verification code: ${code}`)
+    }
   }
 
   private async verifyCode(target: string, channel: string, code: string): Promise<void> {
