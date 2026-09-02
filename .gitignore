@@ -8,3 +8,11 @@ dist/
 coverage/
 *.log
 *.tsbuildinfo
+
+.vercel
+
+# Added by `vercel link`. Broad on purpose: a stray .env.production or
+# .env.local must never be committable. The example file is exempted, since
+# it carries no secrets and is the one env file that SHOULD be in git.
+.env*
+!.env.example

@@ -33,7 +33,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       <LandscapeSection
         img="/landscape/hero-meadow.jpg"
         priority
-        className="pt-[128px] pb-[100px] sm:pt-28 sm:pb-40 lg:pt-[150px] lg:pb-[260px]"
+        className="pt-[128px] pb-[100px] sm:pt-28 sm:pb-40 lg:pt-24 lg:pb-[260px]"
       >
         <Clouds />
         <div className="text-center">
@@ -45,13 +45,13 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
                 is a two-word name — breaking "Fineduc AI Platform" reads as
                 a wrap, not a deliberate stack. `whitespace-nowrap` only from
                 the width where it actually fits; below that it may wrap. */}
-            <h1 className="mkt-h1 mx-auto mt-6 text-balance lg:whitespace-nowrap">{t.hero.title}</h1>
+            <h1 className="mkt-h1 mx-auto mt-6 text-balance lg:mt-4 lg:whitespace-nowrap">{t.hero.title}</h1>
             {/* Measured: 20px / 500 / slate — the template's value line under the title. */}
-            <p className="mx-auto mt-5 max-w-[720px] text-[15px] leading-[1.45] font-medium text-pretty text-slate sm:mt-7 sm:text-[17px] sm:leading-[1.55] lg:text-[20px]">
+            <p className="mx-auto mt-5 max-w-[720px] text-[15px] leading-[1.45] font-medium text-pretty text-slate sm:mt-7 sm:text-[17px] sm:leading-[1.55] lg:mt-4 lg:text-[18px]">
               {t.hero.subtitle}
             </p>
 
-            <div className="mt-7 flex items-center justify-center gap-2.5 sm:mt-9 sm:gap-3">
+            <div className="mt-7 flex items-center justify-center gap-2.5 sm:mt-9 sm:gap-3 lg:mt-6">
               <PrimaryButton href={`/${locale}/inscription`}>
                 <span className="sm:hidden">{t.hero.ctaPrimaryShort}</span>
                 <span className="hidden sm:inline">{t.hero.ctaPrimary}</span>
@@ -61,7 +61,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
 
             {/* Honest claims about how the product works — never invented
                 customer counts (see PROOF in lib/content.ts). */}
-            <ul className="mt-7 flex flex-wrap justify-center gap-x-5 gap-y-1.5 sm:mt-9 sm:gap-x-7 sm:gap-y-2">
+            <ul className="mt-7 flex flex-wrap justify-center gap-x-5 gap-y-1.5 sm:mt-9 sm:gap-x-7 sm:gap-y-2 lg:mt-6">
               {t.hero.trust.map((item) => (
                 <li key={item} className="flex items-center gap-2 text-[13px] font-medium text-slate sm:text-[16px]">
                   <span aria-hidden="true" className="text-positive">
@@ -73,8 +73,13 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
             </ul>
           </Reveal>
 
-          {/* The whole product, fully visible — no fade cutting through it. */}
-          <Reveal delay={140} distance="lg" className="mx-auto mt-10 max-w-[1060px] sm:mt-16">
+          {/* Deliberately breaks the fold on desktop. The template centred the
+              copy and let the product sit below it, which at 1366x657 showed
+              16px of the dashboard — the page described the product and hid
+              it. The lg: rhythm above is tightened so ~160px of it shows
+              without scrolling: enough to read as a real screen, not so much
+              that it competes with the headline. */}
+          <Reveal delay={140} distance="lg" className="mx-auto mt-10 max-w-[1060px] sm:mt-16 lg:mt-8">
             <DesktopMock locale={locale} />
           </Reveal>
         </div>

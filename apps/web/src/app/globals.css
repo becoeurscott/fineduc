@@ -92,6 +92,16 @@
   .mkt-h1 { font-size: clamp(2.75rem, 7vw, 6.25rem); }
 }
 
+/* Desktop steps BACK DOWN, against the template.
+   At 1366x657 — an ordinary laptop, and the most common desktop viewport —
+   the template's 96px title pushed the product shot to y=641, leaving 16px
+   of it above the fold. Effectively nothing: the page sold the idea and hid
+   the thing. 5.6vw/80px renders ~76px here, which still reads as the hero
+   headline and buys back ~20px of the vertical budget. */
+@media (min-width: 1024px) {
+  .mkt-h1 { font-size: clamp(2.75rem, 5.6vw, 5rem); }
+}
+
 @utility mkt-h2 {
   /* 34px floor, measured off the template's phone variant — 30px read a
      step too quiet against a 36px h1. */

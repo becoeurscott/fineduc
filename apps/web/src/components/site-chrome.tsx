@@ -254,6 +254,14 @@ export function SiteFooter({ locale }: { locale: Locale }) {
                   {t.nav.security}
                 </Link>
               </li>
+              {/* Footer only, not the top nav: developers go looking for docs,
+                  while a director choosing software does not need a REST
+                  reference competing with Tarifs for their attention. */}
+              <li>
+                <Link href={`/${locale}/api`} className="mkt-link text-slate hover:text-ink">
+                  {t.nav.api}
+                </Link>
+              </li>
             </ul>
           </div>
 

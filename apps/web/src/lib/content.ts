@@ -27,6 +27,7 @@ export const CONTENT = {
       features: 'Fonctionnalités',
       pricing: 'Tarifs',
       security: 'Sécurité',
+      api: 'API',
       demo: 'Créer mon école',
       demoShort: 'Inscription',
       login: 'Se connecter',
@@ -211,6 +212,26 @@ export const CONTENT = {
         },
       ],
     },
+    api: {
+      eyebrow: 'Développeurs',
+      title: 'L’API REST Fineduc.',
+      subtitle:
+        'La même API que notre propre tableau de bord utilise. Rien de séparé, rien de bridé : ce que l’application fait, vous pouvez le faire.',
+      baseUrlTitle: 'URL de base',
+      authTitle: 'Authentification',
+      authBody:
+        'Chaque appel porte un jeton JWT dans l’en-tête Authorization. Vous l’obtenez en vous connectant avec le compte de votre école ; il est lié à cet établissement et ne donne accès à rien d’autre.',
+      errorsTitle: 'Erreurs',
+      errorsBody:
+        'Toutes les erreurs suivent la norme RFC 9457 (application/problem+json). Le champ code est stable et destiné à votre code ; detail est écrit pour un humain et peut être reformulé.',
+      limitsTitle: 'Limites de débit',
+      limitsBody:
+        'Par minute et par IP : 10 sur les routes d’authentification, 30 sur les pages publiques de paiement, 120 sur les webhooks. Un dépassement renvoie 429 avec les en-têtes RateLimit standard.',
+      endpointsTitle: 'Points d’entrée',
+      keysTitle: 'Clés d’API : pas encore',
+      keysBody:
+        'Il n’existe pas encore de clé d’API permettant à un service tiers d’appeler Fineduc sans session. L’authentification se fait uniquement par jeton utilisateur. Nous préférons le dire plutôt que documenter une fonctionnalité que vous ne pourriez pas utiliser.',
+    },
     security: {
       eyebrow: 'Sécurité et confiance',
       title: 'Conçu pour un directeur méfiant.',
@@ -389,6 +410,7 @@ export const CONTENT = {
       features: 'Features',
       pricing: 'Pricing',
       security: 'Security',
+      api: 'API',
       demo: 'Create my school',
       demoShort: 'Sign up',
       login: 'Sign in',
@@ -497,6 +519,26 @@ export const CONTENT = {
         { n: '02', title: 'You set your fee schedule', body: 'Per grade: tuition, registration, exams, canteen, transport. Then the instalment split.' },
         { n: '03', title: 'Reminders and payments run themselves', body: 'You only step in for the exceptions. The rest happens without you.' },
       ],
+    },
+    api: {
+      eyebrow: 'Developers',
+      title: 'The Fineduc REST API.',
+      subtitle:
+        'The same API our own dashboard runs on. Nothing separate, nothing held back: what the app can do, you can do.',
+      baseUrlTitle: 'Base URL',
+      authTitle: 'Authentication',
+      authBody:
+        'Every call carries a JWT in the Authorization header. You get one by signing in with your school account; it is scoped to that school and reaches nothing else.',
+      errorsTitle: 'Errors',
+      errorsBody:
+        'Every error follows RFC 9457 (application/problem+json). The code field is stable and meant for your code; detail is written for a human and may be reworded.',
+      limitsTitle: 'Rate limits',
+      limitsBody:
+        'Per minute, per IP: 10 on auth routes, 30 on the public payment pages, 120 on webhooks. Exceeding one returns 429 with the standard RateLimit headers.',
+      endpointsTitle: 'Endpoints',
+      keysTitle: 'API keys: not yet',
+      keysBody:
+        'There is no API key today that lets a third-party service call Fineduc without a session. Authentication is by user token only. We would rather say so than document something you could not actually use.',
     },
     security: {
       eyebrow: 'Security and trust',
