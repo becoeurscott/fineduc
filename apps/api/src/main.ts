@@ -66,6 +66,35 @@ async function bootstrap() {
   app.use('/auth/setup', authLimiter)
 
   /*
+   * `/admin` is a single shared key with no user behind it, no second
+   * factor, and — since the console moved to admin.fineeduc.com — a login
+   * page anyone on the internet can load. Vercel's deployment protection
+   * covers *.vercel.app URLs, NOT a production custom domain, so the key is
+   * now the whole of the defence.
+   *
+   * A 256-bit key is not guessable, but leaving the guessing UNTHROTTLED on
+   * the one endpoint that grants platform-wide access is a gap that costs
+   * one line to close. Tighter than the auth limiter at 5/min: real admin
+   * use is a handful of calls by one person, so anything faster is not a
+   * human working.
+   */
+  app.use(
+    '/admin',
+    rateLimit({
+      windowMs: 60 * 1000,
+      max: 5,
+      standardHeaders: true,
+      legacyHeaders: false,
+      message: {
+        type: 'https://fineduc.com/errors/TOO_MANY_REQUESTS',
+        title: 'Too Many Requests',
+        status: 429,
+        detail: 'Too many attempts. Please try again in a minute.',
+      },
+    }),
+  )
+
+  /*
    * The PUBLIC parent-facing pages. Until now `/pay/:token` had no limit at
    * all — it is unauthenticated, it hits the database on every call, and it
    * is the cheapest thing on the box to hammer.
