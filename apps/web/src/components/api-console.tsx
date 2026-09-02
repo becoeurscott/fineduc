@@ -108,22 +108,28 @@ export function ApiConsole({ endpoints, locale }: { endpoints: readonly ConsoleE
   const [loginNote, setLoginNote] = useState<string | null>(null)
 
   const [selected, setSelected] = useState(0)
-  const endpoint = endpoints[selected] ?? endpoints[0]!
-  const [path, setPath] = useState(endpoint.path)
-  const [body, setBody] = useState(endpoint.body ?? '')
+  /* Seeded from the first entry rather than from `endpoint` below, so the
+     hooks never depend on an index that could be out of range. */
+  const [path, setPath] = useState(endpoints[0]?.path ?? '')
+  const [body, setBody] = useState(endpoints[0]?.body ?? '')
   const [armed, setArmed] = useState(false)
 
   const [sending, setSending] = useState(false)
   const [result, setResult] = useState<Result | null>(null)
 
-  const isWrite = endpoint.method !== 'GET'
+  const endpoint = endpoints[selected]
+  /* A missing endpoint is treated as read-only: the arming step exists to
+     stop an accidental write, so the safe default when we cannot tell what
+     the request is must be "not a write". */
+  const isWrite = endpoint !== undefined && endpoint.method !== 'GET'
   const needsToken = useMemo(
     () => !PUBLIC_PATHS.some((p) => path.startsWith(p)),
     [path],
   )
 
   function choose(index: number) {
-    const next = endpoints[index]!
+    const next = endpoints[index]
+    if (!next) return
     setSelected(index)
     setPath(next.path)
     setBody(next.body ?? '')
@@ -156,6 +162,7 @@ export function ApiConsole({ endpoints, locale }: { endpoints: readonly ConsoleE
   }
 
   async function send() {
+    if (!endpoint) return
     setSending(true)
     setResult(null)
     const started = performance.now()
@@ -192,7 +199,7 @@ export function ApiConsole({ endpoints, locale }: { endpoints: readonly ConsoleE
     }
   }
 
-  const blocked = (isWrite && !armed) || (needsToken && !token)
+  const blocked = !endpoint || (isWrite && !armed) || (needsToken && !token)
   const inputClass =
     'h-11 w-full rounded-[var(--radius-control)] border border-line bg-white px-3 text-[14px] text-ink placeholder:text-slate/50 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent'
 
