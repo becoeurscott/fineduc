@@ -23,7 +23,8 @@
     "test:unit": "vitest run --exclude '**/*.integration.test.ts'",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "seed": "tsx src/seed.ts",
-    "clean": "rm -rf dist generated"
+    "clean": "rm -rf dist generated",
+    "migrate:deploy": "prisma migrate deploy"
   },
   "dependencies": {
     "@fineduc/config": "workspace:*",
