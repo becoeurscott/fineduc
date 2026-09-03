@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { WHATSAPP_NUMBER } from '@/lib/content'
 
 /**
  * The API stores country as CHAR(2) and validates it as exactly two
@@ -125,16 +126,23 @@ const COPY = {
  *
  * It is strictly additive. The POST to /auth/signup/start has already
  * recorded the request in the admin dashboard by the time this runs, so a
- * blocked popup, a missing number or a prospect who never presses send loses
- * the convenience, never the lead.
+ * blocked popup or a prospect who never presses send loses the convenience,
+ * never the lead.
+ *
+ * The number comes from `content.ts`, the same constant the floating contact
+ * button uses — one place, so the two can never point at different lines.
  */
 function whatsappHandoff(
   to: string,
   locale: 'fr' | 'en',
   form: { school: string; name: string; role: string; email: string; phone: string; students: string; country: string },
 ): string | null {
-  // Unset in most environments; the UI hides the step rather than linking to
-  // a wa.me URL with no number in it.
+  /*
+   * `content.ts` already stores this as wa.me wants it — E.164 digits, no `+`.
+   * Normalised anyway because a later edit that pastes a `+237 6 99…` would
+   * otherwise land every visitor on a wa.me error page rather than a chat,
+   * and nothing else would notice.
+   */
   const digits = to.replace(/\D/g, '')
   if (!digits) return null
 
@@ -185,7 +193,6 @@ export function SignupForm({ locale }: { locale: 'fr' | 'en' }) {
     'h-11 w-full rounded-[var(--radius-control)] border border-line bg-surface px-3 text-sm text-ink placeholder:text-slate-muted focus:border-accent focus:outline-none'
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3010'
-  const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? ''
 
   async function handleSubmit() {
     if (!form.school.trim() || !form.name.trim() || !form.email.trim() || !form.phone.trim()) return
