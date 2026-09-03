@@ -82,6 +82,8 @@ const COPY = {
     successLead: 'Nous avons bien reçu la demande de',
     successBody:
       'Notre équipe la vérifie sous 24 heures. Dès qu’elle est validée, vous recevez vos identifiants de connexion par WhatsApp au numéro que vous venez d’indiquer.',
+    whatsappCta: 'Continuer sur WhatsApp',
+    whatsappHelp: 'Envoyez le message pré-rempli pour que nous vous répondions plus vite.',
     successNote: 'Aucune action de votre part pour l’instant — gardez simplement votre WhatsApp à portée de main.',
     steps: ['Votre demande', 'Validation', 'Vos accès'],
   },
@@ -105,10 +107,60 @@ const COPY = {
     successLead: 'We have received the request for',
     successBody:
       'Our team reviews it within 24 hours. Once approved, you will receive your sign-in details on WhatsApp, at the number you just gave us.',
+    whatsappCta: 'Continue on WhatsApp',
+    whatsappHelp: 'Send the pre-filled message so we can reply faster.',
     successNote: 'Nothing to do for now — just keep an eye on your WhatsApp.',
     steps: ['Your request', 'Review', 'Your access'],
   },
 } as const
+
+/**
+ * Where a new request is handed to a human.
+ *
+ * The prospect is sent to WhatsApp with their own details already typed, so
+ * the message THEY send is the notification the operator receives. That is
+ * the whole mechanism: Fineduc cannot send a WhatsApp itself — the adapter in
+ * packages/providers is still an `export {}` stub — and a wa.me link needs no
+ * API, no Business account and no cost.
+ *
+ * It is strictly additive. The POST to /auth/signup/start has already
+ * recorded the request in the admin dashboard by the time this runs, so a
+ * blocked popup, a missing number or a prospect who never presses send loses
+ * the convenience, never the lead.
+ */
+function whatsappHandoff(
+  to: string,
+  locale: 'fr' | 'en',
+  form: { school: string; name: string; role: string; email: string; phone: string; students: string; country: string },
+): string | null {
+  // Unset in most environments; the UI hides the step rather than linking to
+  // a wa.me URL with no number in it.
+  const digits = to.replace(/\D/g, '')
+  if (!digits) return null
+
+  const lines =
+    locale === 'fr'
+      ? [
+          `Bonjour Fineduc, je viens d'envoyer une demande pour ${form.school}.`,
+          '',
+          `Contact : ${form.name} (${form.role})`,
+          `Téléphone : ${form.phone}`,
+          `E-mail : ${form.email}`,
+          form.students ? `Élèves : ${form.students}` : '',
+          `Pays : ${form.country}`,
+        ]
+      : [
+          `Hello Fineduc, I have just sent a request for ${form.school}.`,
+          '',
+          `Contact: ${form.name} (${form.role})`,
+          `Phone: ${form.phone}`,
+          `Email: ${form.email}`,
+          form.students ? `Students: ${form.students}` : '',
+          `Country: ${form.country}`,
+        ]
+
+  return `https://wa.me/${digits}?text=${encodeURIComponent(lines.filter(Boolean).join('\n'))}`
+}
 
 export function SignupForm({ locale }: { locale: 'fr' | 'en' }) {
   const c = COPY[locale]
@@ -124,6 +176,7 @@ export function SignupForm({ locale }: { locale: 'fr' | 'en' }) {
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [whatsappUrl, setWhatsappUrl] = useState<string | null>(null)
 
   const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm((prev) => ({ ...prev, [key]: e.target.value }))
@@ -132,6 +185,7 @@ export function SignupForm({ locale }: { locale: 'fr' | 'en' }) {
     'h-11 w-full rounded-[var(--radius-control)] border border-line bg-surface px-3 text-sm text-ink placeholder:text-slate-muted focus:border-accent focus:outline-none'
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3010'
+  const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? ''
 
   async function handleSubmit() {
     if (!form.school.trim() || !form.name.trim() || !form.email.trim() || !form.phone.trim()) return
@@ -162,6 +216,20 @@ export function SignupForm({ locale }: { locale: 'fr' | 'en' }) {
         )
       }
       setSubmitted(true)
+
+      /*
+       * Opened here, inside the click's own task, so the browser still counts
+       * it as user-initiated. `noopener` because wa.me is a third party and
+       * must never get a handle on this window.
+       *
+       * If the popup is blocked the button on the success screen is the same
+       * link, so the path is never lost — only made one tap longer.
+       */
+      const handoff = whatsappHandoff(WHATSAPP_NUMBER, locale, form)
+      if (handoff) {
+        setWhatsappUrl(handoff)
+        window.open(handoff, '_blank', 'noopener,noreferrer')
+      }
     } catch (err) {
       const networkFallback = locale === 'fr' ? 'Erreur réseau' : 'Network error'
       setError(err instanceof Error ? err.message : networkFallback)
@@ -229,6 +297,26 @@ export function SignupForm({ locale }: { locale: 'fr' | 'en' }) {
             {c.successLead} <span className="font-medium text-ink">{form.school}</span>.
           </p>
           <p className="mt-4 text-sm text-slate">{c.successBody}</p>
+
+          {/* The same link the popup tried to open. Shown always, not only on
+              failure: there is no reliable way to detect a blocked popup, and
+              a prospect staring at a tab that never opened has no way back to
+              the conversation. */}
+          {whatsappUrl ? (
+            <>
+              <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-6 inline-flex h-11 items-center justify-center gap-2 rounded-[var(--radius-mkt-pill)] bg-[#25D366] px-5 text-sm font-medium text-white transition-opacity hover:opacity-90"
+              >
+                <span aria-hidden="true">✆</span>
+                {c.whatsappCta}
+              </a>
+              <p className="mt-3 text-xs text-slate">{c.whatsappHelp}</p>
+            </>
+          ) : null}
+
           <p className="mt-6 rounded-lg bg-[#edf1f4] px-4 py-3 text-xs text-slate">{c.successNote}</p>
         </div>
       ) : (
