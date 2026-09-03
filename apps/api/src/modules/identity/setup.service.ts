@@ -23,7 +23,19 @@ export class SetupService {
       orderBy: { createdAt: 'desc' },
     })
 
-    const dashboardUrl = process.env['NEXT_PUBLIC_DASHBOARD_URL'] ?? process.env['PUBLIC_PAY_URL'] ?? ''
+    /*
+     * NO fallback to PUBLIC_PAY_URL. That chain silently built every school's
+     * setup link from the PARENT payment app's origin, and when that variable
+     * held a project which had never been deployed, every link sent to a
+     * school 404'd. The school saw "ce lien est invalide ou a expiré" on a
+     * token that was minutes old and perfectly valid.
+     *
+     * They are different apps for different audiences; one is never a
+     * reasonable stand-in for the other. Unset now yields an empty origin and
+     * a visibly relative link, which is wrong in a way somebody notices,
+     * rather than wrong in a way that looks like an expired token.
+     */
+    const dashboardUrl = process.env['NEXT_PUBLIC_DASHBOARD_URL'] ?? ''
 
     const completedIds = rows
       .filter((r) => r.status === 'setup_complete' && r.tempEmail)
@@ -177,7 +189,9 @@ export class SetupService {
   }
 
   private loginUrl(setupToken: string): string {
-    const base = process.env['NEXT_PUBLIC_DASHBOARD_URL'] ?? 'https://fineduc-dashboard.vercel.app'
+    // Same variable as `setupUrl` above, so the two links a school may be
+    // sent cannot point at different origins.
+    const base = process.env['NEXT_PUBLIC_DASHBOARD_URL'] ?? 'https://app.fineeduc.com'
     return `${base.replace(/\/$/, '')}/first-login/${setupToken}`
   }
 
