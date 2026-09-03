@@ -24,7 +24,7 @@
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "seed": "tsx src/seed.ts",
     "clean": "rm -rf dist generated",
-    "migrate:deploy": "prisma migrate deploy"
+    "migrate:deploy": "prisma migrate deploy || echo '!!! MIGRATIONS DID NOT APPLY - see the error above. The app is starting anyway, against the schema as it currently is.'"
   },
   "dependencies": {
     "@fineduc/config": "workspace:*",
